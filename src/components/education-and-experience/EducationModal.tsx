@@ -139,7 +139,7 @@ export default function EducationModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? "PencilSimple Education" : "Add Education"}
+      title={initialData ? "Edit Education" : "Add Education"}
       size="md"
       preventBackdropClose={isSubmitting || uploading}
     >

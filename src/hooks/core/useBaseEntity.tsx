@@ -571,8 +571,9 @@ export function useBaseEntity<T extends BaseEntity>(
         );
 
         if (result) {
+          // Compare with both number and string versions of id for compatibility
           setItems((prev) =>
-            prev.map((item) => (item.id === id ? result as T : item))
+            prev.map((item) => (item.id == id ? result as T : item))
           );
           setItem(result as T);
           setUpdating(false);
@@ -609,8 +610,9 @@ export function useBaseEntity<T extends BaseEntity>(
           showErrorMessage: true,
         });
 
-        setItems((prev) => prev.filter((item) => item.id !== id));
-        if (item?.id === id) {
+        // Compare with both number and string versions of id for compatibility
+        setItems((prev) => prev.filter((item) => item.id != id));
+        if (item?.id == id) {
           setItem(null);
         }
         setDeleting(false);

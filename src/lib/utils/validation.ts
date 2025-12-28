@@ -704,8 +704,8 @@ export function validateDepartment(department: any, hasDept: boolean): Validatio
     if (descriptionError) errors.push(descriptionError);
   }
 
-  // division_id is required
-  if (hasDept && (!department.division_id || typeof department.division_id !== 'number' || department.division_id <= 0)) {
+  // division_id is required when hasDept is true
+  if (hasDept && (department.division_id === null || department.division_id === undefined || typeof department.division_id !== 'number' || isNaN(department.division_id))) {
     errors.push({
       field: 'division_id',
       message: 'Division is required'
@@ -731,7 +731,8 @@ export function validatePosition(position: any): ValidationResult {
   if (
     position.department_id === null ||
     position.department_id === undefined ||
-    typeof position.department_id !== "number"
+    (typeof position.department_id !== "number") ||
+    isNaN(position.department_id)
   ) {
     errors.push({ field: "department_id", message: "Department is required" });
   }
@@ -739,7 +740,8 @@ export function validatePosition(position: any): ValidationResult {
   if (
     position.grade === null ||
     position.grade === undefined ||
-    typeof position.grade !== "number"
+    (typeof position.grade !== "number") ||
+    isNaN(position.grade)
   ) {
     errors.push({ field: "grade", message: "Grade is required" });
   }

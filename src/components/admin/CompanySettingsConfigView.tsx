@@ -113,7 +113,7 @@ export default function CompanySettingsConfigView({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="bg-surface-primary rounded-xl shadow-sm"
+        className="bg-surface-primary rounded-xl shadow-sm p-4"
       >
         <SectionHeader
           title="Security Settings"
@@ -172,7 +172,7 @@ export default function CompanySettingsConfigView({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="bg-surface-primary rounded-xl shadow-sm"
+        className="bg-surface-primary rounded-xl shadow-sm p-4"
       >
         <SectionHeader
           title="Operations Settings"
@@ -200,7 +200,7 @@ export default function CompanySettingsConfigView({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="bg-surface-primary rounded-xl shadow-sm"
+        className="bg-surface-primary rounded-xl shadow-sm p-4"
       >
         <SectionHeader
           title="Time Settings"

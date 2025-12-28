@@ -103,7 +103,7 @@ export default function BasicTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-surface-primary rounded-xl shadow-sm mb-8">
+      <div className="bg-surface-primary rounded-xl shadow-sm mb-6 p-4">
         <SectionHeader
           title="Company Basics"
           icon={<Building className="w-5 h-5" />}

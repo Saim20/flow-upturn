@@ -50,7 +50,7 @@ export default function DepartmentDetailsModal({
   const divisionName = divisions?.find((division) => division.id === department.division_id)?.name;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <motion.div
         initial="hidden"
         animate="visible"

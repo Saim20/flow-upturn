@@ -97,7 +97,7 @@ export default function ExperienceModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? "PencilSimple Experience" : "Add Experience"}
+      title={initialData ? "Edit Experience" : "Add Experience"}
       size="md"
       preventBackdropClose={isSubmitting}
     >

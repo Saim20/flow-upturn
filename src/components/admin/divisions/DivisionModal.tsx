@@ -94,7 +94,7 @@ export default function DivisionModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? "PencilSimple Division" : "Create Division"}
+      title={initialData ? "Edit Division" : "Create Division"}
       size="sm"
       preventBackdropClose={isSubmitting}
     >

@@ -65,23 +65,17 @@ export default function FormModal<T extends Record<string, any>>({
       if (type === 'number') {
         return {
           ...prev,
-          [name]: value === '' ? '' : Number(value),
+          [name]: value === '' ? undefined : Number(value),
         };
       }
       
       // Handle select fields that should be numbers (like department_id, grade)
-      if ((name.endsWith('_id') || name === 'grade') && value !== '') {
+      // Convert to number if the field ends with _id or is named 'grade'
+      if ((name.endsWith('_id') || name === 'grade')) {
+        const numValue = Number(value);
         return {
           ...prev,
-          [name]: value,
-        };
-      }
-      
-      // Handle empty values for optional numeric fields
-      if ((name.endsWith('_id') || name === 'grade') && value === '') {
-        return {
-          ...prev,
-          [name]: undefined,
+          [name]: value === '' || isNaN(numValue) ? undefined : numValue,
         };
       }
       
@@ -115,8 +109,13 @@ export default function FormModal<T extends Record<string, any>>({
     }
 
     setErrors({});
-    onSubmit(result.data!);
-    setIsSubmitting(false);
+    try {
+      await onSubmit(result.data!);
+    } catch (error) {
+      console.error("Form submission error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -150,8 +149,7 @@ export default function FormModal<T extends Record<string, any>>({
             disabled={
               isLoading ||
               isSubmitting ||
-              !isValid ||
-              Object.keys(errors).length > 0
+              !isValid
             }
           >
             {submitButtonText}

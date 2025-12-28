@@ -47,7 +47,7 @@ export default function DivisionDetailsModal({
   const divisionHead = employees?.find((employee) => employee.id === division.head_id);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <motion.div
         initial="hidden"
         animate="visible"

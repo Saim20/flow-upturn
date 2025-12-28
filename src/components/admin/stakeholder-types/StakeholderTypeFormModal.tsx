@@ -29,7 +29,7 @@ export default function StakeholderTypeFormModal({
 
   return (
     <FormModal<StakeholderTypeFormData>
-      title={type ? "PencilSimple Stakeholder Type" : "Add Stakeholder Type"}
+      title={type ? "Edit Stakeholder Type" : "Add Stakeholder Type"}
       icon={<Tag size={24} weight="duotone" />}
       initialValues={initialValues}
       validationFn={validateStakeholderType}

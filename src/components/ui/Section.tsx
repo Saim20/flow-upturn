@@ -109,15 +109,14 @@ export function Section({
           )}
           {/* Add Button for empty state - use addButton if no specific emptyState.action */}
           {!emptyState.action && addButton && (
-            <Button
-              variant="primary"
-              size="sm"
+            <button
+              type="button"
               onClick={addButton.onClick}
-              className="mt-4 inline-flex items-center gap-1.5"
+              className="mt-4 inline-flex items-center gap-1.5 font-medium text-xs px-3 py-1.5 rounded bg-primary-600 hover:bg-primary-700 text-white shadow-sm dark:bg-primary-500 dark:hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
               <Plus size={16} />
               {addButton.label || "Add"}
-            </Button>
+            </button>
           )}
         </div>
       );
@@ -152,6 +151,9 @@ export function Section({
 
       {/* Content */}
       {renderContent()}
+
+      {/* Always render children for modals/portals even when showing empty state or loading */}
+      {(loading || emptyState?.show) && <div className="hidden">{children}</div>}
 
       {/* Add Button - show at bottom when there are items and not loading */}
       {addButton && !loading && !emptyState?.show && (
