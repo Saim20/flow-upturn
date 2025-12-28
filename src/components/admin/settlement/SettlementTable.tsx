@@ -43,7 +43,7 @@ export default function ClaimSettlementTable({
                   onClick={() => onEdit(claim.id)}
                   className="text-blue-600 hover:text-blue-900"
                 >
-                  PencilSimple
+                  Edit
                 </button>
                 <button
                   onClick={() => onDelete(claim.id)}

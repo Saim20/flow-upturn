@@ -197,7 +197,7 @@ export default function SalaryManagementModal({
                       onClick={() => setShowHistory(false)}
                       className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
                     >
-                      Back to PencilSimple
+                      Back to Edit
                     </button>
                   </div>
 
@@ -349,7 +349,7 @@ export function EmployeeSalaryList() {
                           className="inline-flex items-center px-3 py-1 border border-primary-300 dark:border-primary-600 rounded-md text-sm text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                         >
                           <PencilSimple className="h-3 w-3 mr-1" />
-                          PencilSimple Salary
+                          Edit Salary
                         </button>
                       </td>
                     </tr>

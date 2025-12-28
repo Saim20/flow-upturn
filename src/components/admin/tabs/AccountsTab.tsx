@@ -749,7 +749,7 @@ export default function AccountsTab() {
                         className="flex-1 bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 dark:text-primary-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                       >
                         <PencilSimple size={14} />
-                        PencilSimple
+                        Edit
                       </button>
                       <button
                         onClick={() => handleDeleteClick(account)}

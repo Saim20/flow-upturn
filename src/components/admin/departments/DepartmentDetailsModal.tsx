@@ -115,7 +115,7 @@ export default function DepartmentDetailsModal({
             className="flex items-center gap-2 border border-border-primary text-foreground-secondary hover:bg-background-secondary dark:hover:bg-background-tertiary"
           >
             <PencilSimple size={18} weight="bold" />
-            PencilSimple
+            Edit
           </Button>
           <Button
             variant="danger"

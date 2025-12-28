@@ -107,6 +107,18 @@ export function Section({
               {emptyState.action.label}
             </Button>
           )}
+          {/* Add Button for empty state - use addButton if no specific emptyState.action */}
+          {!emptyState.action && addButton && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={addButton.onClick}
+              className="mt-4 inline-flex items-center gap-1.5"
+            >
+              <Plus size={16} />
+              {addButton.label || "Add"}
+            </Button>
+          )}
         </div>
       );
     }
@@ -141,7 +153,7 @@ export function Section({
       {/* Content */}
       {renderContent()}
 
-      {/* Add Button */}
+      {/* Add Button - show at bottom when there are items and not loading */}
       {addButton && !loading && !emptyState?.show && (
         <div className="flex justify-center sm:justify-start mt-4">
           <button

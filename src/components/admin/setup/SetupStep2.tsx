@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { motion } from "framer-motion";
 import { fadeInUp, staggerContainer } from "@/components/ui/animations";
-import { Gear } from "@phosphor-icons/react";
 
 // Import all the admin management components
 import SupervisorLineageView from "@/components/admin/supervisor-lineage/SupervisorLineageView";

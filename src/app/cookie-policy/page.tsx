@@ -115,7 +115,7 @@ export default function CookiePolicy() {
           </p>
           <ul className="list-disc pl-6 text-foreground-secondary space-y-2 mb-6">
             <li>
-              <strong>Browser Gear:</strong> You can set or amend your web browser controls to accept or refuse cookies. If you choose to reject cookies, you may still use our Service though your access to some functionality and areas of our Service may be restricted.
+              <strong>Browser Settings:</strong> You can set or amend your web browser controls to accept or refuse cookies. If you choose to reject cookies, you may still use our Service though your access to some functionality and areas of our Service may be restricted.
             </li>
             <li>
               <strong>Cookie Preference Center:</strong> You can manage your cookie preferences through our cookie consent banner when you first visit our Service.
