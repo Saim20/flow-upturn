@@ -443,7 +443,7 @@ export function validateProject(project: any): ValidationResult {
   if (
     !Array.isArray(project.department_ids) ||
     project.department_ids.length === 0 ||
-    project.department_ids.some((id:number) => id === 0)
+    project.department_ids.some((id: number) => id === 0)
   ) {
     errors.push({
       field: 'department_ids',
@@ -906,9 +906,9 @@ export function validateOnboardingForm(formData: any): ValidationResult {
   const phoneError = validateStringLength(formData.phone_number, 'phone_number', 1);
   if (phoneError) errors.push(phoneError);
 
-  if (!formData.department_id || (typeof formData.department_id !== 'number' && isNaN(Number(formData.department_id)))) {
-    errors.push({ field: 'department_id', message: 'Department is required' });
-  }
+  // if (!formData.department_id || (typeof formData.department_id !== 'number' && isNaN(Number(formData.department_id)))) {
+  //   errors.push({ field: 'department_id', message: 'Department is required' });
+  // }
 
   const designationError = validateStringLength(formData.designation, 'designation', 1);
   if (designationError) errors.push(designationError);

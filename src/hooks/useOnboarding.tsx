@@ -363,7 +363,7 @@ export function useOnboarding() {
           .from("employees")
           .select("has_approval, rejection_reason")
           .eq("id", userId)
-          .single();
+          .maybeSingle();
 
         if (!error && data && callback) {
           callback({ new: data });
