@@ -219,8 +219,8 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
           {/* Days count */}
           {daysCount > 0 && (
             <div className="flex items-center p-3 bg-info/10 dark:bg-info/20 rounded-md border border-info/30 dark:border-info/40">
-              <Info className="h-5 w-5 text-info dark:text-info mr-2" />
-              <span className="text-foreground-primary dark:text-foreground-primary text-sm">
+              <Info className="h-5 w-5 text-info mr-2" />
+              <span className="text-foreground-primary text-sm">
                 You are requesting <strong>{daysCount} day{daysCount !== 1 ? "s" : ""}</strong> of leave
               </span>
             </div>
