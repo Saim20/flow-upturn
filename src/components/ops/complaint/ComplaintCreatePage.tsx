@@ -175,7 +175,7 @@ export default function ComplaintCreatePage({ onClose, setActiveTab }: Complaint
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900 transition-colors"
         >
           <CaretLeft size={16} />
           <span>Back</span>
@@ -188,7 +188,7 @@ export default function ComplaintCreatePage({ onClose, setActiveTab }: Complaint
       >
         <div
           className={`w-12 h-6 rounded-full relative ${
-            isAnonymous ? "bg-blue-500" : "bg-gray-300"
+            isAnonymous ? "bg-primary-500" : "bg-border-secondary dark:bg-surface-hover"
           } transition-colors duration-300`}
         >
           <motion.div

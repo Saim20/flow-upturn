@@ -245,7 +245,7 @@ export default function RequisitionCreateModal({
         >
           <div
             className={`w-12 h-6 rounded-full relative ${
-              isOneOff ? "bg-blue-500" : "bg-gray-300"
+              isOneOff ? "bg-primary-500" : "bg-border-secondary dark:bg-surface-hover"
             } transition-colors duration-300`}
           >
             <motion.div
