@@ -173,7 +173,7 @@ export default function AccountsTab() {
         {entries.slice(0, displayCount).map(([key, value]) => (
           <span
             key={key}
-            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border max-w-32"
+            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-950/30 text-primary-800 dark:text-primary-300 border max-w-32"
             title={`${key}: ${value}`}
           >
             <span className="font-semibold">{key}:</span>
@@ -559,9 +559,9 @@ export default function AccountsTab() {
           </div>
 
           {/* Active Filters Summary */}
-          <div className="flex items-center gap-2 text-xs text-foreground-secondary bg-blue-50 p-3 rounded-lg">
-            <FunnelSimple size={12} className="text-blue-600" />
-            <span className="font-medium text-blue-900">
+          <div className="flex items-center gap-2 text-xs text-foreground-secondary bg-info/10 dark:bg-info/20 p-3 rounded-lg">
+            <FunnelSimple size={12} className="text-info" />
+            <span className="font-medium text-foreground-primary">
               Showing {filteredAccounts.length} transaction{filteredAccounts.length !== 1 ? 's' : ''} from {startDate} to {endDate}
             </span>
           </div>
@@ -605,8 +605,8 @@ export default function AccountsTab() {
                         <td className="px-4 py-3">
                           {account.stakeholder ? (
                             <div className="flex items-center gap-1">
-                              <Users size={12} className="text-blue-500 shrink-0" />
-                              <span className="text-xs text-gray-900 truncate max-w-[100px]" title={account.stakeholder.name}>
+                              <Users size={12} className="text-primary-500 shrink-0" />
+                              <span className="text-xs text-foreground-primary truncate max-w-[100px]" title={account.stakeholder.name}>
                                 {account.stakeholder.name}
                               </span>
                             </div>
@@ -729,8 +729,8 @@ export default function AccountsTab() {
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-foreground-secondary">Stakeholder:</span>
                           <div className="flex items-center gap-1">
-                            <Users size={12} className="text-blue-500" />
-                            <span className="text-xs text-gray-900">{account.stakeholder.name}</span>
+                            <Users size={12} className="text-primary-500" />
+                            <span className="text-xs text-foreground-primary">{account.stakeholder.name}</span>
                           </div>
                         </div>
                       )}
