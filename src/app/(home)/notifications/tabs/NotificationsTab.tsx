@@ -172,7 +172,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete }: Notification
                 {notification.title}
               </h4>
               {!notification.is_read && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0"></span>
+                <span className="w-2 h-2 bg-primary-500 rounded-full shrink-0"></span>
               )}
             </div>
 

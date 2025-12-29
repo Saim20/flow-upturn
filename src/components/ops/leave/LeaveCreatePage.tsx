@@ -150,7 +150,7 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
       {/* Leave Balance */}
       <section className="bg-surface-primary rounded-xl shadow-sm p-6 border border-border-primary">
         <h1 className="text-xl font-bold text-foreground-primary mb-4 flex items-center">
-          <Clock className="mr-2 h-5 w-5 text-blue-600" /> Leave Balance
+          <Clock className="mr-2 h-5 w-5 text-primary-600 dark:text-primary-400" /> Leave Balance
         </h1>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 min-h-[100px]">
           {balancesLoading ? (
@@ -176,7 +176,7 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
       {/* Leave Form */}
       <section className="bg-surface-primary rounded-xl shadow-sm p-6 border border-border-primary">
         <h2 className="text-xl font-bold text-foreground-primary mb-6 flex items-center">
-          <Calendar className="mr-2 h-5 w-5 text-blue-600" /> Leave Application
+          <Calendar className="mr-2 h-5 w-5 text-primary-600 dark:text-primary-400" /> Leave Application
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -218,9 +218,9 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
 
           {/* Days count */}
           {daysCount > 0 && (
-            <div className="flex items-center p-3 bg-blue-50 rounded-md border border-blue-100">
-              <Info className="h-5 w-5 text-blue-600 mr-2" />
-              <span className="text-blue-800 text-sm">
+            <div className="flex items-center p-3 bg-info/10 dark:bg-info/20 rounded-md border border-info/30 dark:border-info/40">
+              <Info className="h-5 w-5 text-info dark:text-info mr-2" />
+              <span className="text-foreground-primary dark:text-foreground-primary text-sm">
                 You are requesting <strong>{daysCount} day{daysCount !== 1 ? "s" : ""}</strong> of leave
               </span>
             </div>

@@ -371,7 +371,7 @@ export default function StakeholdersPage() {
                           e.stopPropagation();
                           router.push(`/admin/stakeholders/${stakeholder.id}`);
                         }}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:bg-primary-50 dark:hover:bg-primary-950 rounded transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1 text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950 rounded transition-colors"
                       >
                         <Eye size={16} />
                         View
@@ -491,7 +491,7 @@ export default function StakeholdersPage() {
                     e.stopPropagation();
                     router.push(`/admin/stakeholders/${stakeholder.id}`);
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg active:bg-blue-100 transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 rounded-lg active:bg-primary-100 dark:active:bg-primary-900 transition-colors font-medium"
                 >
                   <Eye size={14} />
                   View Details
