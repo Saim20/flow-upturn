@@ -317,7 +317,7 @@ export default function TaskDetails({ id, onClose }: TaskDetailsProps) {
                 return (
                   <div 
                     key={index}
-                    className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-2 rounded-lg text-sm font-medium"
+                    className="flex items-center gap-2 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 px-3 py-2 rounded-lg text-sm font-medium"
                   >
                     <User size={14} />
                     <span>{employee?.name || "Unknown Employee"}</span>

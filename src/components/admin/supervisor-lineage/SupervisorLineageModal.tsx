@@ -143,24 +143,24 @@ export default function LineageCreateModal({
         animate="visible"
         exit="exit"
         variants={modalVariants}
-        className="bg-surface-primary p-6 rounded-lg w-full max-w-md space-y-4 shadow-xl border border-blue-100"
+        className="bg-surface-primary p-6 rounded-lg w-full max-w-md space-y-4 shadow-xl border border-border-primary"
       >
         <motion.div variants={fadeInUp} className="flex items-center gap-3">
-          <Buildings size={24} weight="duotone" className="text-blue-600" />
-          <h2 className="text-xl font-semibold text-blue-800">
+          <Buildings size={24} weight="duotone" className="text-primary-600 dark:text-primary-400" />
+          <h2 className="text-xl font-semibold text-foreground-primary">
             Create Lineage
           </h2>
         </motion.div>
 
         <motion.div variants={fadeInUp} className="mb-4">
-          <label className="block font-semibold text-blue-800 mb-2">
+          <label className="block font-semibold text-foreground-primary mb-2">
             Lineage Name
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md bg-blue-50 p-2 border border-blue-200 focus:ring-2 focus:ring-primary-300 focus:border-primary-300 outline-none transition-all"
+            className="w-full rounded-md bg-background-secondary dark:bg-surface-secondary p-2 border border-border-primary focus:ring-2 focus:ring-primary-300 focus:border-primary-300 outline-none transition-all"
             placeholder="Enter Lineage Name"
           />
         </motion.div>
@@ -169,7 +169,7 @@ export default function LineageCreateModal({
           variants={fadeInUp}
           className="bg-surface-primary py-4 w-full max-w-4xl mx-auto"
         >
-          <h3 className="text-md font-semibold text-blue-700 mb-4">
+          <h3 className="text-md font-semibold text-foreground-primary mb-4">
             Set Hierarchy
           </h3>
 
