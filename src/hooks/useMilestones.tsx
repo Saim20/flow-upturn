@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { useBaseEntity } from "./core";
 import { Milestone } from "@/lib/types";
+import { createMilestoneNotification } from "@/lib/utils/notifications";
 
 export type { Milestone };
 
@@ -30,9 +31,37 @@ export function useMilestones() {
           console.error("Error updating project progress:", error);
           throw error;
         }
+
+        // Send notification to project manager about milestone completion
+        try {
+          // Fetch milestone details with project info
+          const { data: milestoneData } = await supabase
+            .from("milestone_records")
+            .select(`
+              name,
+              project_records!inner(
+                name,
+                project_manager_id,
+                employees!project_records_project_manager_id_fkey(
+                  users!inner(id)
+                )
+              )
+            `)
+            .eq("id", id)
+            .single();
+
+          if (milestoneData?.project_records?.employees?.users?.id) {
+            await createMilestoneNotification(
+              milestoneData.project_records.employees.users.id,
+              milestoneData.name || "Milestone",
+              milestoneData.project_records.name || "Project",
+              'completed'
+            );
+          }
+        } catch (notifError) {
+          console.error("Failed to send milestone completion notification:", notifError);
+        }
       }
-
-
 
       return result;
     } catch (error) {

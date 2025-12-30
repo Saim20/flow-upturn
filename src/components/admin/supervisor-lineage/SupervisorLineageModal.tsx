@@ -436,7 +436,7 @@ export function LineageUpdateModal({
       >
         <motion.div variants={fadeInUp} className="flex items-center gap-3">
           <Buildings size={24} weight="duotone" className="text-blue-600" />
-          <h2 className="text-xl font-semibold text-blue-800">PencilSimple Lineage</h2>
+          <h2 className="text-xl font-semibold text-blue-800">Edit Lineage</h2>
         </motion.div>
 
         <motion.div variants={fadeInUp} className="mb-4">

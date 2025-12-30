@@ -172,7 +172,7 @@ export default function ExperienceModal({
             isLoading={isSubmitting}
             className="w-full sm:w-auto"
           >
-            {isSubmitting ? "Saving..." : "FloppyDisk Experience"}
+            {isSubmitting ? "Saving..." : "Save Experience"}
           </Button>
         </div>
       </form>

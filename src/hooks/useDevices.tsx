@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { createDeviceNotification } from '@/lib/utils/notifications';
 
 export interface DeviceRequest {
   id: string;
@@ -123,6 +124,22 @@ export function useDevices() {
     reason?: string
   ) => {
     try {
+      // Fetch device and user info first for notification
+      const { data: deviceData, error: fetchError } = await supabase
+        .from('user_devices')
+        .select('user_id, device_info')
+        .eq('id', deviceId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Get user_id from employees table (user_id in devices is employee_id)
+      const { data: employeeData } = await supabase
+        .from('employees')
+        .select('users!inner(id)')
+        .eq('id', deviceData.user_id)
+        .single();
+
       const { error: updateError } = await supabase
         .from('user_devices')
         .update({ 
@@ -132,6 +149,31 @@ export function useDevices() {
         .eq('id', deviceId);
 
       if (updateError) throw updateError;
+
+      // Send notification only for rejection (per user preference - no email)
+      if (status === 'rejected' && employeeData?.users?.id) {
+        try {
+          // Parse device info for notification
+          let deviceName = 'Unknown Device';
+          if (deviceData.device_info) {
+            try {
+              const info = JSON.parse(deviceData.device_info);
+              deviceName = info.browser || info.device_type || 'Unknown Device';
+            } catch {
+              deviceName = deviceData.device_info;
+            }
+          }
+          
+          await createDeviceNotification(
+            employeeData.users.id,
+            'rejected',
+            deviceName,
+            reason
+          );
+        } catch (notifError) {
+          console.error("Failed to send device rejection notification:", notifError);
+        }
+      }
 
       // Refresh the list
       await fetchPendingDevices();

@@ -236,7 +236,7 @@ export default function EducationModal({
           >
             {(isSubmitting || uploading) ? 
               (uploading ? "Uploading..." : "Saving...") : 
-              "FloppyDisk Education"
+              "Save Education"
             }
           </Button>
         </div>

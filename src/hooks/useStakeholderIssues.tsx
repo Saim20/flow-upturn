@@ -6,6 +6,8 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { StakeholderIssue, StakeholderIssueAttachment, LinkedStepField, StakeholderIssueRequiredField } from "@/lib/types/schemas";
 import { createStakeholderIssueNotification } from "@/lib/utils/notifications";
 import { captureSupabaseError, logError } from "@/lib/sentry";
+import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { checkUserEmailPreference } from "./useEmailPreferences";
 
 // ==============================================================================
 // Form Data Interfaces
@@ -598,6 +600,36 @@ export function useStakeholderIssues() {
                 actionUrl: `/stakeholder-issues/${data.id}`,
               }
             );
+
+            // Send email for high priority/urgent issues
+            if (issueData.priority === 'High' || issueData.priority === 'Urgent') {
+              try {
+                // Get KAM employee details
+                const { data: kamEmployee } = await supabase
+                  .from("employees")
+                  .select("first_name, last_name, email, users!inner(id)")
+                  .eq("id", stakeholderData.kam_id)
+                  .single();
+
+                if (kamEmployee?.email && kamEmployee.users?.id) {
+                  const canSendEmail = await checkUserEmailPreference(kamEmployee.users.id, 'stakeholder_issue_high_priority');
+                  if (canSendEmail) {
+                    await sendNotificationEmailAction({
+                      to: kamEmployee.email,
+                      subject: `${issueData.priority} Priority Issue: ${issueData.title}`,
+                      previewText: `A ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}`,
+                      heading: `${issueData.priority} Priority Stakeholder Issue`,
+                      mainContent: `Dear ${kamEmployee.first_name} ${kamEmployee.last_name},\n\nA ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
+                      ctaText: "View Issue",
+                      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/stakeholder-issues/${data.id}`,
+                      footerText: "You received this because you are the Key Account Manager for this stakeholder.",
+                    });
+                  }
+                }
+              } catch (emailError) {
+                console.error("Failed to send high priority issue email to KAM:", emailError);
+              }
+            }
           }
 
           // Notify assigned employee if different from KAM
@@ -614,6 +646,35 @@ export function useStakeholderIssues() {
                 actionUrl: `/stakeholder-issues/${data.id}`,
               }
             );
+
+            // Send email for high priority/urgent issues to assigned employee
+            if (issueData.priority === 'High' || issueData.priority === 'Urgent') {
+              try {
+                const { data: assignedEmployee } = await supabase
+                  .from("employees")
+                  .select("first_name, last_name, email, users!inner(id)")
+                  .eq("id", issueData.assigned_to)
+                  .single();
+
+                if (assignedEmployee?.email && assignedEmployee.users?.id) {
+                  const canSendEmail = await checkUserEmailPreference(assignedEmployee.users.id, 'stakeholder_issue_high_priority');
+                  if (canSendEmail) {
+                    await sendNotificationEmailAction({
+                      to: assignedEmployee.email,
+                      subject: `${issueData.priority} Priority Issue Assigned: ${issueData.title}`,
+                      previewText: `A ${issueData.priority.toLowerCase()} priority issue has been assigned to you`,
+                      heading: `${issueData.priority} Priority Issue Assigned`,
+                      mainContent: `Dear ${assignedEmployee.first_name} ${assignedEmployee.last_name},\n\nA ${issueData.priority.toLowerCase()} priority issue has been assigned to you for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
+                      ctaText: "View Issue",
+                      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/stakeholder-issues/${data.id}`,
+                      footerText: "You received this because this issue was assigned to you.",
+                    });
+                  }
+                }
+              } catch (emailError) {
+                console.error("Failed to send high priority issue email to assigned employee:", emailError);
+              }
+            }
           }
         } catch (notificationError) {
           console.warn('Failed to send issue creation notifications:', notificationError);
@@ -772,6 +833,58 @@ export function useStakeholderIssues() {
 
           // Notify about status change
           if (issueData.status && issueData.status !== currentIssue?.status) {
+            // If status changed to Pending Approval, notify checker team members
+            if (updateData.status === 'Pending Approval' && currentIssue?.checker_team_id) {
+              try {
+                // Fetch all members of the checker team
+                const { data: teamMembers } = await supabase
+                  .from("team_members")
+                  .select(`
+                    employee_id,
+                    employees!inner(
+                      first_name, 
+                      last_name, 
+                      email,
+                      users!inner(id)
+                    )
+                  `)
+                  .eq("team_id", currentIssue.checker_team_id);
+
+                if (teamMembers && teamMembers.length > 0) {
+                  // Get team name for notification
+                  const { data: teamData } = await supabase
+                    .from("teams")
+                    .select("name")
+                    .eq("id", currentIssue.checker_team_id)
+                    .single();
+
+                  const teamName = teamData?.name || "Checker Team";
+
+                  for (const member of teamMembers) {
+                    const emp = member.employees as any;
+                    if (emp?.users?.id) {
+                      // Send notification to checker team member
+                      await createStakeholderIssueNotification(
+                        emp.users.id,
+                        'pendingCheckerApproval',
+                        {
+                          stakeholderName,
+                          issueTitle,
+                          teamName,
+                        },
+                        {
+                          referenceId: issueId,
+                          actionUrl: `/stakeholder-issues/${issueId}`,
+                        }
+                      );
+                    }
+                  }
+                }
+              } catch (checkerNotifError) {
+                console.error("Failed to notify checker team:", checkerNotifError);
+              }
+            }
+
             // Notify KAM
             if (kamId) {
               if (issueData.status === 'Resolved') {
@@ -794,7 +907,7 @@ export function useStakeholderIssues() {
                   {
                     stakeholderName,
                     issueTitle,
-                    newStatus: issueData.status,
+                    newStatus: updateData.status || issueData.status,
                   },
                   {
                     referenceId: issueId,
@@ -827,7 +940,7 @@ export function useStakeholderIssues() {
                   {
                     stakeholderName,
                     issueTitle,
-                    newStatus: issueData.status,
+                    newStatus: updateData.status || issueData.status,
                   },
                   {
                     referenceId: issueId,

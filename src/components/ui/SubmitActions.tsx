@@ -61,7 +61,7 @@ export default function SubmitActions({
               ? "Action disabled"
               : isSubmitting
               ? "Saving..."
-              : "FloppyDisk your changes"
+              : "Save your changes"
           }
         >
           {isSubmitting ? (

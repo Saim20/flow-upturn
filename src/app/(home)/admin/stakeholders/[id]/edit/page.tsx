@@ -224,7 +224,7 @@ export default function EditStakeholderPage({ params }: { params: Promise<{ id: 
       </button>
 
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-foreground-primary mb-6">PencilSimple Stakeholder</h1>
+        <h1 className="text-2xl font-bold text-foreground-primary mb-6">Edit Stakeholder</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}

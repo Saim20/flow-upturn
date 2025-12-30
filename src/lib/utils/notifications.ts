@@ -36,6 +36,30 @@ export const showNotification = ({ message, type, duration = 3000 }: Notificatio
 // Utility functions for creating common notification types
 
 export const NotificationTemplates = {
+  // Task notifications
+  task: {
+    completed: (taskTitle: string, completedByName: string) => ({
+      title: "Task Completed",
+      message: `"${taskTitle}" has been marked as complete by ${completedByName}.`,
+      context: "task_update",
+      priority: "normal" as const,
+    }),
+    deadlineApproaching: (taskTitle: string, timeLeft: string, isSameDay: boolean) => ({
+      title: isSameDay ? "Task Due Soon" : "Task Deadline Tomorrow",
+      message: isSameDay 
+        ? `"${taskTitle}" is due in ${timeLeft}! Please complete it soon.`
+        : `"${taskTitle}" is due tomorrow. Make sure to complete it on time.`,
+      context: "task_update",
+      priority: isSameDay ? "urgent" as const : "high" as const,
+    }),
+    overdue: (taskTitle: string) => ({
+      title: "Task Overdue",
+      message: `"${taskTitle}" is now overdue. Please complete it as soon as possible or contact your supervisor.`,
+      context: "task_update",
+      priority: "urgent" as const,
+    }),
+  },
+
   // Leave request notifications
   leaveRequest: {
     submitted: (employeeName: string, leaveType: string, startDate: string, endDate: string) => ({
@@ -80,6 +104,12 @@ export const NotificationTemplates = {
       context: "project_update",
       priority: daysLeft <= 3 ? "urgent" as const : "high" as const,
     }),
+    completed: (projectName: string) => ({
+      title: "Project Completed! 🎉",
+      message: `Congratulations! The project "${projectName}" has been successfully completed. Great teamwork!`,
+      context: "project_update",
+      priority: "high" as const,
+    }),
   },
 
   // Employee notifications
@@ -116,6 +146,94 @@ export const NotificationTemplates = {
       title: "Missing Check-out",
       message: `You didn't check out from ${siteName} yesterday. Please contact HR to correct your attendance record.`,
       context: "attendance",
+      priority: "high" as const,
+    }),
+    requestSubmitted: (employeeName: string, requestType: string, date: string) => ({
+      title: "Attendance Request Needs Review",
+      message: `${employeeName} submitted an attendance ${requestType} request for ${date}. Please review.`,
+      context: "attendance",
+      priority: "normal" as const,
+    }),
+    requestApproved: (requestType: string, date: string) => ({
+      title: "Attendance Request Approved",
+      message: `Your attendance ${requestType} request for ${date} has been approved.`,
+      context: "attendance",
+      priority: "normal" as const,
+    }),
+    requestRejected: (requestType: string, date: string, reason?: string) => ({
+      title: "Attendance Request Rejected",
+      message: `Your attendance ${requestType} request for ${date} was not approved.${reason ? ` Reason: ${reason}` : ''}`,
+      context: "attendance",
+      priority: "normal" as const,
+    }),
+  },
+
+  // Milestone notifications
+  milestone: {
+    completed: (milestoneName: string, projectName: string) => ({
+      title: "Milestone Completed",
+      message: `The milestone "${milestoneName}" in project "${projectName}" has been completed.`,
+      context: "milestone_update",
+      priority: "normal" as const,
+    }),
+  },
+
+  // Onboarding notifications (always sent - no preference)
+  onboarding: {
+    approved: (employeeName: string) => ({
+      title: "Welcome to the Team!",
+      message: `Hi ${employeeName}, your account has been approved! You can now access all features of the system.`,
+      context: "onboarding",
+      priority: "high" as const,
+    }),
+    rejected: (employeeName: string, reason?: string) => ({
+      title: "Account Application Update",
+      message: `Hi ${employeeName}, your account application was not approved.${reason ? ` Reason: ${reason}` : ''} Please contact HR for more information.`,
+      context: "onboarding",
+      priority: "high" as const,
+    }),
+    pendingReview: (employeeName: string) => ({
+      title: "New Employee Pending Approval",
+      message: `${employeeName} has submitted their onboarding information and is awaiting approval.`,
+      context: "onboarding",
+      priority: "normal" as const,
+    }),
+  },
+
+  // Offboarding notifications (always sent - no preference)
+  offboarding: {
+    processed: (employeeName: string, offboardingType: string) => ({
+      title: "Offboarding Processed",
+      message: `${employeeName} has been ${offboardingType.toLowerCase()}. Please ensure all handover tasks are completed.`,
+      context: "offboarding",
+      priority: "high" as const,
+    }),
+    reactivated: (employeeName: string) => ({
+      title: "Account Reactivated",
+      message: `Hi ${employeeName}, your account has been reactivated. Welcome back!`,
+      context: "offboarding",
+      priority: "high" as const,
+    }),
+  },
+
+  // Device management notifications
+  device: {
+    approved: (deviceInfo: string) => ({
+      title: "Device Approved",
+      message: `Your device (${deviceInfo}) has been approved. You can now access the system from this device.`,
+      context: "device",
+      priority: "normal" as const,
+    }),
+    rejected: (deviceInfo: string, reason?: string) => ({
+      title: "Device Not Approved",
+      message: `Your device (${deviceInfo}) was not approved.${reason ? ` Reason: ${reason}` : ''} Please contact your administrator.`,
+      context: "device",
+      priority: "high" as const,
+    }),
+    limitExceeded: (currentCount: number, maxLimit: number) => ({
+      title: "Device Limit Exceeded",
+      message: `You have ${currentCount} devices registered, which exceeds the limit of ${maxLimit}. Please remove unused devices from your profile settings.`,
+      context: "device",
       priority: "high" as const,
     }),
   },
@@ -290,6 +408,12 @@ export const NotificationTemplates = {
       message: `"${issueTitle}" for "${stakeholderName}" has been resolved. The process can continue.`,
       context: "stakeholder_issue",
       priority: "normal" as const,
+    }),
+    pendingCheckerApproval: (stakeholderName: string, issueTitle: string, teamName: string) => ({
+      title: "Approval Required",
+      message: `Issue "${issueTitle}" for "${stakeholderName}" requires your team's (${teamName}) approval before it can be marked as resolved.`,
+      context: "stakeholder_issue",
+      priority: "high" as const,
     }),
   },
 };
@@ -655,7 +779,7 @@ export const createStakeholderNotification = async (
 // Stakeholder issue notification helper
 export const createStakeholderIssueNotification = async (
   recipientId: string,
-  type: 'created' | 'assigned' | 'statusChanged' | 'resolved',
+  type: 'created' | 'assigned' | 'statusChanged' | 'resolved' | 'pendingCheckerApproval',
   data: any,
   options: { referenceId?: number; actionUrl?: string } = {}
 ) => {
@@ -674,8 +798,230 @@ export const createStakeholderIssueNotification = async (
     case 'resolved':
       template = NotificationTemplates.stakeholderIssue.resolved(data.stakeholderName, data.issueTitle);
       break;
+    case 'pendingCheckerApproval':
+      template = NotificationTemplates.stakeholderIssue.pendingCheckerApproval(data.stakeholderName, data.issueTitle, data.teamName);
+      break;
     default:
       throw new Error('Invalid stakeholder issue notification type');
+  }
+
+  const companyId = await getCompanyId();
+  return await createSystemNotification(
+    recipientId,
+    template.title,
+    template.message,
+    companyId,
+    {
+      priority: template.priority,
+      context: template.context,
+      referenceId: options.referenceId,
+      actionUrl: options.actionUrl,
+    }
+  );
+};
+
+// Task notification helper
+export const createTaskNotification = async (
+  recipientId: string,
+  type: 'completed' | 'deadlineApproaching' | 'overdue',
+  data: any,
+  options: { referenceId?: string; actionUrl?: string } = {}
+) => {
+  let template;
+  
+  switch (type) {
+    case 'completed':
+      template = NotificationTemplates.task.completed(data.taskTitle, data.completedByName);
+      break;
+    case 'deadlineApproaching':
+      template = NotificationTemplates.task.deadlineApproaching(data.taskTitle, data.timeLeft, data.isSameDay);
+      break;
+    case 'overdue':
+      template = NotificationTemplates.task.overdue(data.taskTitle);
+      break;
+    default:
+      throw new Error('Invalid task notification type');
+  }
+
+  const companyId = await getCompanyId();
+  return await createSystemNotification(
+    recipientId,
+    template.title,
+    template.message,
+    companyId,
+    {
+      priority: template.priority,
+      context: template.context,
+      referenceId: options.referenceId ? parseInt(options.referenceId) : undefined,
+      actionUrl: options.actionUrl,
+    }
+  );
+};
+
+// Milestone notification helper
+export const createMilestoneNotification = async (
+  recipientId: string,
+  type: 'completed',
+  data: any,
+  options: { referenceId?: number; actionUrl?: string } = {}
+) => {
+  let template;
+  
+  switch (type) {
+    case 'completed':
+      template = NotificationTemplates.milestone.completed(data.milestoneName, data.projectName);
+      break;
+    default:
+      throw new Error('Invalid milestone notification type');
+  }
+
+  const companyId = await getCompanyId();
+  return await createSystemNotification(
+    recipientId,
+    template.title,
+    template.message,
+    companyId,
+    {
+      priority: template.priority,
+      context: template.context,
+      referenceId: options.referenceId,
+      actionUrl: options.actionUrl,
+    }
+  );
+};
+
+// Onboarding notification helper (always sent - no user preference)
+export const createOnboardingNotification = async (
+  recipientId: string,
+  type: 'approved' | 'rejected' | 'pendingReview',
+  data: any,
+  options: { referenceId?: string; actionUrl?: string } = {}
+) => {
+  let template;
+  
+  switch (type) {
+    case 'approved':
+      template = NotificationTemplates.onboarding.approved(data.employeeName);
+      break;
+    case 'rejected':
+      template = NotificationTemplates.onboarding.rejected(data.employeeName, data.reason);
+      break;
+    case 'pendingReview':
+      template = NotificationTemplates.onboarding.pendingReview(data.employeeName);
+      break;
+    default:
+      throw new Error('Invalid onboarding notification type');
+  }
+
+  const companyId = await getCompanyId();
+  return await createSystemNotification(
+    recipientId,
+    template.title,
+    template.message,
+    companyId,
+    {
+      priority: template.priority,
+      context: template.context,
+      referenceId: options.referenceId ? parseInt(options.referenceId) : undefined,
+      actionUrl: options.actionUrl,
+    }
+  );
+};
+
+// Offboarding notification helper (always sent - no user preference)
+export const createOffboardingNotification = async (
+  recipientId: string,
+  type: 'processed' | 'reactivated',
+  data: any,
+  options: { referenceId?: string; actionUrl?: string } = {}
+) => {
+  let template;
+  
+  switch (type) {
+    case 'processed':
+      template = NotificationTemplates.offboarding.processed(data.employeeName, data.offboardingType);
+      break;
+    case 'reactivated':
+      template = NotificationTemplates.offboarding.reactivated(data.employeeName);
+      break;
+    default:
+      throw new Error('Invalid offboarding notification type');
+  }
+
+  const companyId = await getCompanyId();
+  return await createSystemNotification(
+    recipientId,
+    template.title,
+    template.message,
+    companyId,
+    {
+      priority: template.priority,
+      context: template.context,
+      referenceId: options.referenceId ? parseInt(options.referenceId) : undefined,
+      actionUrl: options.actionUrl,
+    }
+  );
+};
+
+// Device notification helper
+export const createDeviceNotification = async (
+  recipientId: string,
+  type: 'approved' | 'rejected' | 'limitExceeded',
+  data: any,
+  options: { referenceId?: string; actionUrl?: string } = {}
+) => {
+  let template;
+  
+  switch (type) {
+    case 'approved':
+      template = NotificationTemplates.device.approved(data.deviceInfo);
+      break;
+    case 'rejected':
+      template = NotificationTemplates.device.rejected(data.deviceInfo, data.reason);
+      break;
+    case 'limitExceeded':
+      template = NotificationTemplates.device.limitExceeded(data.currentCount, data.maxLimit);
+      break;
+    default:
+      throw new Error('Invalid device notification type');
+  }
+
+  const companyId = await getCompanyId();
+  return await createSystemNotification(
+    recipientId,
+    template.title,
+    template.message,
+    companyId,
+    {
+      priority: template.priority,
+      context: template.context,
+      referenceId: options.referenceId ? parseInt(options.referenceId) : undefined,
+      actionUrl: options.actionUrl,
+    }
+  );
+};
+
+// Attendance request notification helper
+export const createAttendanceRequestNotification = async (
+  recipientId: string,
+  type: 'requestSubmitted' | 'requestApproved' | 'requestRejected',
+  data: any,
+  options: { referenceId?: number; actionUrl?: string } = {}
+) => {
+  let template;
+  
+  switch (type) {
+    case 'requestSubmitted':
+      template = NotificationTemplates.attendance.requestSubmitted(data.employeeName, data.requestType, data.date);
+      break;
+    case 'requestApproved':
+      template = NotificationTemplates.attendance.requestApproved(data.requestType, data.date);
+      break;
+    case 'requestRejected':
+      template = NotificationTemplates.attendance.requestRejected(data.requestType, data.date, data.reason);
+      break;
+    default:
+      throw new Error('Invalid attendance request notification type');
   }
 
   const companyId = await getCompanyId();

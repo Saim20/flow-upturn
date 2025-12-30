@@ -14,6 +14,8 @@ import SuccessModal from '@/components/ui/modals/SuccessModal';
 import ErrorModal from '@/components/ui/modals/ErrorModal';
 import { supabase } from '@/lib/supabase/client';
 import { getEmployeeInfo } from '@/lib/utils/auth';
+import { createAttendanceRequestNotification } from '@/lib/utils/notifications';
+import { formatDateToDayMonth } from '@/lib/utils';
 
 const initialAttendanceRecord: { tag: string; site_id: number | undefined } = {
   tag: "Present",
@@ -75,6 +77,27 @@ export default function AttendanceWidget({ config, isEditMode, onToggle, onSizeC
         setModalMessage('Failed to send request to supervisor. Please try again.');
         setShowErrorModal(true);
       } else {
+        // Send notification to supervisor
+        if (user.supervisor_id) {
+          try {
+            const requestType = attendanceStatus === 'Late' ? 'late arrival' : 'wrong location';
+            await createAttendanceRequestNotification(
+              user.supervisor_id,
+              'requestSubmitted',
+              {
+                employeeName: user.name,
+                requestType,
+                date: formatDateToDayMonth(new Date().toISOString()),
+              },
+              {
+                actionUrl: '/ops/attendance?tab=request',
+              }
+            );
+          } catch (notifError) {
+            console.error('Failed to send notification:', notifError);
+          }
+        }
+
         setModalTitle('Request Sent!');
         setModalMessage('Your request has been sent to your supervisor for approval.');
         setShowSuccessModal(true);

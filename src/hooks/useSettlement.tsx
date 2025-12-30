@@ -80,7 +80,7 @@ export function useSettlementRequests() {
   }, [fetchSettlementRequests]);
 
   const updateSettlementRequest = useCallback(
-    async (action: string, id: number, comment: string) => {
+    async (action: string, id: number, comment: string, claimantId: string) => {
       setProcessingId(id);
 
       try {
@@ -107,11 +107,12 @@ export function useSettlementRequests() {
         // Refresh the requests
         await fetchSettlementRequests();
 
-        const recipients = [user.supervisor_id].filter(Boolean) as string[]
+        // Notify the claimant (employee who submitted the request), not the supervisor
+        const recipients = [claimantId].filter(Boolean) as string[];
 
         createNotification({
           title: "Settlement Request Update",
-          message: `A settlement request has been ${action.toLowerCase()}`,
+          message: `Your settlement request has been ${action.toLowerCase()}.`,
           priority: 'normal',
           type_id: 6,
           recipient_id: recipients,
