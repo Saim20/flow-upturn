@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Buildings, GlobeHemisphereWest, Factory, Users, UserGear, House as House, SignOut, X, List, DeviceMobile, UserPlus } from "@phosphor-icons/react";
+import { Buildings, GlobeHemisphereWest, Factory, Users, UserGear, House as House, SignOut, X, List, DeviceMobile, UserPlus, ClipboardText } from "@phosphor-icons/react";
 import { ROUTES } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -48,6 +48,11 @@ const navItems = [
     href: ROUTES.SUPERADMIN.USERS,
     icon: UserGear,
   },
+  {
+    label: "Templates",
+    href: "/sa/templates",
+    icon: ClipboardText,
+  },
 ];
 
 export default function SuperadminNav() {
@@ -73,9 +78,9 @@ export default function SuperadminNav() {
             <div className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || 
+                const isActive = pathname === item.href ||
                   (item.href !== "/sa" && pathname.startsWith(item.href));
-                
+
                 return (
                   <Link
                     key={item.href}
@@ -83,10 +88,9 @@ export default function SuperadminNav() {
                     className={`
                       flex items-center gap-2 px-3 py-2 rounded-lg
                       transition-all duration-200 text-sm font-medium
-                      ${
-                        isActive
-                          ? "bg-primary-50 dark:bg-primary-900/30 text-primary-600"
-                          : "text-foreground-secondary hover:bg-surface-hover hover:text-foreground-primary"
+                      ${isActive
+                        ? "bg-primary-50 dark:bg-primary-900/30 text-primary-600"
+                        : "text-foreground-secondary hover:bg-surface-hover hover:text-foreground-primary"
                       }
                     `}
                   >
@@ -139,9 +143,9 @@ export default function SuperadminNav() {
               <div className="container mx-auto px-4 py-3 space-y-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href || 
+                  const isActive = pathname === item.href ||
                     (item.href !== "/sa" && pathname.startsWith(item.href));
-                  
+
                   return (
                     <Link
                       key={item.href}
@@ -150,10 +154,9 @@ export default function SuperadminNav() {
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-lg
                         transition-all duration-200 font-medium
-                        ${
-                          isActive
-                            ? "bg-primary-50 dark:bg-primary-900/30 text-primary-600"
-                            : "text-foreground-secondary hover:bg-surface-hover hover:text-foreground-primary"
+                        ${isActive
+                          ? "bg-primary-50 dark:bg-primary-900/30 text-primary-600"
+                          : "text-foreground-secondary hover:bg-surface-hover hover:text-foreground-primary"
                         }
                       `}
                     >
@@ -162,7 +165,7 @@ export default function SuperadminNav() {
                     </Link>
                   );
                 })}
-                
+
                 <div className="border-t border-border-primary pt-2 mt-2">
                   <Link
                     href="/home"

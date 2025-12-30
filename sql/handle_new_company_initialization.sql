@@ -29,21 +29,36 @@ DECLARE
   manager_team_id INTEGER;
   employee_team_id INTEGER;
   perm_record RECORD;
+  selected_template_id UUID;
 BEGIN
   RAISE LOG '🚀 Initializing new company: % (ID: %)', NEW.name, NEW.id;
 
   -- ==========================================================================
-  -- STEP 1: CREATE DEFAULT LEAVE TYPES
+  -- STEP 0: SELECT TEMPLATE
+  -- ==========================================================================
+  -- Select the default template.
+  SELECT id INTO selected_template_id FROM company_templates WHERE is_default = true LIMIT 1;
+
+  IF selected_template_id IS NULL THEN
+    RAISE WARNING '⚠️ No default company template found! Please check company_templates table.';
+  ELSE
+     RAISE LOG 'Using company template ID: %', selected_template_id;
+     -- Store the selected template ID in the company record for Phase 2
+     UPDATE companies SET initialization_template_id = selected_template_id WHERE id = NEW.id;
+  END IF;
+
+  -- ==========================================================================
+  -- STEP 1: CREATE LEAVE TYPES
   -- ==========================================================================
   BEGIN
-    INSERT INTO leave_types (name, annual_quota, company_id) VALUES
-      ('Annual Leave', 20, NEW.id),
-      ('Sick Leave', 10, NEW.id),
-      ('Personal Leave', 5, NEW.id),
-      ('Maternity Leave', 90, NEW.id),
-      ('Paternity Leave', 15, NEW.id)
-    ON CONFLICT DO NOTHING;
-    RAISE LOG '✅ Created default leave types';
+    IF selected_template_id IS NOT NULL THEN
+      INSERT INTO leave_types (name, annual_quota, company_id)
+      SELECT name, annual_quota, NEW.id
+      FROM template_leave_types
+      WHERE template_id = selected_template_id
+      ON CONFLICT DO NOTHING;
+      RAISE LOG '✅ Created leave types from template';
+    END IF;
   EXCEPTION WHEN undefined_table THEN
     RAISE LOG '⚠️ leave_types table does not exist, skipping...';
   WHEN OTHERS THEN
@@ -51,17 +66,17 @@ BEGIN
   END;
 
   -- ==========================================================================
-  -- STEP 2: CREATE DEFAULT NOTICE TYPES
+  -- STEP 2: CREATE NOTICE TYPES
   -- ==========================================================================
   BEGIN
-    INSERT INTO notice_types (name, company_id) VALUES
-      ('General', NEW.id),
-      ('HR Announcement', NEW.id),
-      ('Policy Update', NEW.id),
-      ('Event', NEW.id),
-      ('Urgent', NEW.id)
-    ON CONFLICT DO NOTHING;
-    RAISE LOG '✅ Created default notice types';
+    IF selected_template_id IS NOT NULL THEN
+      INSERT INTO notice_types (name, company_id)
+      SELECT name, NEW.id
+      FROM template_notice_types
+      WHERE template_id = selected_template_id
+      ON CONFLICT DO NOTHING;
+      RAISE LOG '✅ Created notice types from template';
+    END IF;
   EXCEPTION WHEN undefined_table THEN
     RAISE LOG '⚠️ notice_types table does not exist, skipping...';
   WHEN OTHERS THEN
@@ -69,17 +84,17 @@ BEGIN
   END;
 
   -- ==========================================================================
-  -- STEP 3: CREATE DEFAULT REQUISITION CATEGORIES
+  -- STEP 3: CREATE REQUISITION CATEGORIES
   -- ==========================================================================
   BEGIN
-    INSERT INTO requisition_types (name, company_id) VALUES
-      ('IT Equipment', NEW.id),
-      ('Office Supplies', NEW.id),
-      ('Furniture', NEW.id),
-      ('Travel', NEW.id),
-      ('Training', NEW.id)
-    ON CONFLICT DO NOTHING;
-    RAISE LOG '✅ Created default requisition categories';
+    IF selected_template_id IS NOT NULL THEN
+      INSERT INTO requisition_types (name, company_id)
+      SELECT name, NEW.id
+      FROM template_requisition_types
+      WHERE template_id = selected_template_id
+      ON CONFLICT DO NOTHING;
+      RAISE LOG '✅ Created requisition categories from template';
+    END IF;
   EXCEPTION WHEN undefined_table THEN
     RAISE LOG '⚠️ requisition_types table does not exist, skipping...';
   WHEN OTHERS THEN
@@ -87,17 +102,17 @@ BEGIN
   END;
 
   -- ==========================================================================
-  -- STEP 4: CREATE DEFAULT COMPLAINT TYPES
+  -- STEP 4: CREATE COMPLAINT TYPES
   -- ==========================================================================
   BEGIN
-    INSERT INTO complaint_types (name, company_id) VALUES
-      ('Workplace Issue', NEW.id),
-      ('Harassment', NEW.id),
-      ('Discrimination', NEW.id),
-      ('Policy Violation', NEW.id),
-      ('Other', NEW.id)
-    ON CONFLICT DO NOTHING;
-    RAISE LOG '✅ Created default complaint types';
+    IF selected_template_id IS NOT NULL THEN
+      INSERT INTO complaint_types (name, company_id)
+      SELECT name, NEW.id
+      FROM template_complaint_types
+      WHERE template_id = selected_template_id
+      ON CONFLICT DO NOTHING;
+      RAISE LOG '✅ Created complaint types from template';
+    END IF;
   EXCEPTION WHEN undefined_table THEN
     RAISE LOG '⚠️ complaint_types table does not exist, skipping...';
   WHEN OTHERS THEN
@@ -105,15 +120,17 @@ BEGIN
   END;
 
   -- ==========================================================================
-  -- STEP 5: CREATE DEFAULT STAKEHOLDER TYPES
+  -- STEP 5: CREATE STAKEHOLDER TYPES
   -- ==========================================================================
   BEGIN
-    INSERT INTO stakeholder_types (name, description, company_id, is_active) VALUES
-      ('Customer', 'External customers and clients', NEW.id, true),
-      ('Vendor', 'Suppliers and service providers', NEW.id, true),
-      ('Partner', 'Business partners and affiliates', NEW.id, true)
-    ON CONFLICT DO NOTHING;
-    RAISE LOG '✅ Created default stakeholder types';
+    IF selected_template_id IS NOT NULL THEN
+      INSERT INTO stakeholder_types (name, description, company_id, is_active)
+      SELECT name, description, NEW.id, true
+      FROM template_stakeholder_types
+      WHERE template_id = selected_template_id
+      ON CONFLICT DO NOTHING;
+      RAISE LOG '✅ Created stakeholder types from template';
+    END IF;
   EXCEPTION WHEN undefined_table THEN
     RAISE LOG '⚠️ stakeholder_types table does not exist, skipping...';
   WHEN OTHERS THEN
@@ -121,15 +138,17 @@ BEGIN
   END;
 
   -- ==========================================================================
-  -- STEP 6: CREATE DEFAULT STAKEHOLDER ISSUE CATEGORIES
+  -- STEP 6: CREATE STAKEHOLDER ISSUE CATEGORIES
   -- ==========================================================================
   BEGIN
-    INSERT INTO stakeholder_issue_categories (name, description, color, company_id, is_active) VALUES
-      ('General Inquiry', 'General questions and information requests', '#3B82F6', NEW.id, true),
-      ('Technical Issue', 'Technical problems and bugs', '#EF4444', NEW.id, true),
-      ('Billing Issue', 'Payment and billing related issues', '#F59E0B', NEW.id, true)
-    ON CONFLICT DO NOTHING;
-    RAISE LOG '✅ Created default stakeholder issue categories';
+    IF selected_template_id IS NOT NULL THEN
+      INSERT INTO stakeholder_issue_categories (name, description, color, company_id, is_active)
+      SELECT name, description, color, NEW.id, true
+      FROM template_stakeholder_issue_categories
+      WHERE template_id = selected_template_id
+      ON CONFLICT DO NOTHING;
+      RAISE LOG '✅ Created stakeholder issue categories from template';
+    END IF;
   EXCEPTION WHEN undefined_table THEN
     RAISE LOG '⚠️ stakeholder_issue_categories table does not exist, skipping...';
   WHEN OTHERS THEN
@@ -245,6 +264,264 @@ RETURNS TRIGGER AS $$
 DECLARE
   employee_count INTEGER;
   admin_team_id INTEGER;
+  manager_team_id INTEGER;
+  employee_team_id INTEGER;
+  template_id UUID;
+  
+  -- Variables for loops
+  proj_record RECORD;
+  task_record RECORD;
+  notice_record RECORD;
+  process_record RECORD;
+  step_record RECORD;
+  
+  -- IDs for created records
+  new_project_id TEXT;
+  new_process_id INTEGER;
+  new_step_id INTEGER;
+  
+  -- Helper IDs
+  target_notice_type_id INTEGER;
+  target_team_id INTEGER;
+BEGIN
+  -- Check if this is the FIRST employee in the company
+  SELECT COUNT(*) INTO employee_count
+  FROM employees
+  WHERE company_id = NEW.company_id
+    AND id != NEW.id;
+
+  -- If not the first employee, exit
+  IF employee_count > 0 THEN
+    RAISE LOG 'Employee % is not the first in company %. Skipping first-employee initialization.', 
+      NEW.id, NEW.company_id;
+    RETURN NEW;
+  END IF;
+
+  RAISE LOG '🎉 First employee detected for company %! Starting sample data creation...', NEW.company_id;
+
+  -- Get the template ID used for initialization
+  SELECT initialization_template_id INTO template_id FROM companies WHERE id = NEW.company_id;
+  
+  IF template_id IS NULL THEN
+    RAISE WARNING '⚠️ No initialization template found for company %. Using default if available.', NEW.company_id;
+    SELECT id INTO template_id FROM company_templates WHERE is_default = true LIMIT 1;
+  END IF;
+
+  -- ==========================================================================
+  -- STEP 1: ADD FIRST EMPLOYEE TO ADMINISTRATORS TEAM
+  -- ==========================================================================
+  BEGIN
+    -- Get Team IDs
+    SELECT id INTO admin_team_id FROM teams WHERE company_id = NEW.company_id AND name = 'Administrators' LIMIT 1;
+    SELECT id INTO manager_team_id FROM teams WHERE company_id = NEW.company_id AND name = 'Managers' LIMIT 1;
+    SELECT id INTO employee_team_id FROM teams WHERE company_id = NEW.company_id AND name = 'Employees' LIMIT 1;
+
+    IF admin_team_id IS NOT NULL THEN
+      -- Override role to Admin
+      UPDATE employees SET role = 'Admin' WHERE id = NEW.id;
+      
+      -- Add to Administrators team
+      INSERT INTO team_members (team_id, employee_id, added_by)
+      VALUES (admin_team_id, NEW.id, NEW.id)
+      ON CONFLICT (team_id, employee_id) DO NOTHING;
+
+      RAISE LOG '✅ First employee % added to Administrators team', NEW.id;
+    ELSE
+      RAISE WARNING '⚠️ No Administrators team found for company %', NEW.company_id;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE LOG '⚠️ Error adding first employee to Admin team: %', SQLERRM;
+  END;
+
+  -- IF NO TEMPLATE, STOP HERE
+  IF template_id IS NULL THEN
+    RAISE WARNING '⚠️ No template available. Skipping sample data creation.';
+    RETURN NEW;
+  END IF;
+
+  -- ==========================================================================
+  -- STEP 2: CREATE SAMPLE PROJECTS & TASKS
+  -- ==========================================================================
+  BEGIN
+    FOR proj_record IN SELECT * FROM template_sample_projects WHERE template_id = template_id LOOP
+      -- Create Project
+      INSERT INTO project_records (
+        id,
+        project_title,
+        description,
+        start_date,
+        end_date,
+        status,
+        progress,
+        project_lead_id,
+        company_id,
+        created_by
+      ) VALUES (
+        'sample-' || lower(replace(gen_random_uuid()::text, '-', '')) || '-' || NEW.company_id,
+        proj_record.title,
+        proj_record.description,
+        CURRENT_DATE,
+        CURRENT_DATE + INTERVAL '1 day' * proj_record.duration_days,
+        'Ongoing',
+        0,
+        NEW.id,
+        NEW.company_id,
+        NEW.id
+      )
+      RETURNING id INTO new_project_id;
+
+      -- Create Tasks for this Project
+      FOR task_record IN SELECT * FROM template_sample_tasks WHERE project_id = proj_record.id LOOP
+        INSERT INTO task_records (
+          id,
+          task_title,
+          task_description,
+          start_date,
+          end_date,
+          priority,
+          status,
+          company_id,
+          assignees,
+          created_by,
+          project_id
+        ) VALUES (
+          'sample-task-' || lower(replace(gen_random_uuid()::text, '-', '')),
+          task_record.title,
+          task_record.description,
+          CURRENT_DATE,
+          CURRENT_DATE + INTERVAL '1 day' * task_record.due_days,
+          task_record.priority,
+          false,
+          NEW.company_id,
+          ARRAY[NEW.id],
+          NEW.id,
+          new_project_id
+        );
+      END LOOP;
+    END LOOP;
+    RAISE LOG '✅ Created sample projects and tasks from template';
+  EXCEPTION WHEN OTHERS THEN
+    RAISE LOG '⚠️ Error creating sample projects: %', SQLERRM;
+  END;
+
+  -- ==========================================================================
+  -- STEP 3: CREATE SAMPLE NOTICES
+  -- ==========================================================================
+  BEGIN
+    FOR notice_record IN SELECT * FROM template_sample_notices WHERE template_id = template_id LOOP
+      -- Find matching notice type ID
+      SELECT id INTO target_notice_type_id 
+      FROM notice_types 
+      WHERE company_id = NEW.company_id AND name = notice_record.type_name 
+      LIMIT 1;
+
+      IF target_notice_type_id IS NOT NULL THEN
+        INSERT INTO notice_records (
+          title,
+          description,
+          urgency,
+          valid_from,
+          valid_till,
+          notice_type_id,
+          company_id,
+          created_by
+        ) VALUES (
+          notice_record.title,
+          notice_record.description,
+          notice_record.urgency,
+          CURRENT_DATE,
+          CURRENT_DATE + INTERVAL '1 day' * notice_record.valid_days,
+          target_notice_type_id,
+          NEW.company_id,
+          NEW.id
+        );
+      END IF;
+    END LOOP;
+    RAISE LOG '✅ Created sample notices from template';
+  EXCEPTION WHEN OTHERS THEN
+    RAISE LOG '⚠️ Error creating sample notices: %', SQLERRM;
+  END;
+
+  -- ==========================================================================
+  -- STEP 4: CREATE SAMPLE PROCESSES & STEPS
+  -- ==========================================================================
+  BEGIN
+    FOR process_record IN SELECT * FROM template_sample_processes WHERE template_id = template_id LOOP
+      -- Create Process
+      INSERT INTO stakeholder_processes (
+        name,
+        description,
+        company_id,
+        is_active,
+        is_sequential,
+        allow_rollback,
+        created_by
+      ) VALUES (
+        process_record.name,
+        process_record.description,
+        NEW.company_id,
+        true,
+        true,
+        false,
+        NEW.id
+      )
+      RETURNING id INTO new_process_id;
+
+      -- Create Steps
+      FOR step_record IN SELECT * FROM template_sample_process_steps WHERE process_id = process_record.id ORDER BY step_order ASC LOOP
+        -- Determine assigned team
+        target_team_id := CASE 
+          WHEN step_record.assigned_team_role = 'Admin' THEN admin_team_id
+          WHEN step_record.assigned_team_role = 'Manager' THEN manager_team_id
+          ELSE employee_team_id
+        END;
+
+        IF target_team_id IS NOT NULL THEN
+          INSERT INTO stakeholder_process_steps (
+            process_id,
+            name,
+            description,
+            step_order,
+            team_ids,
+            field_definitions,
+            use_date_range,
+            can_reject,
+            created_by
+          ) VALUES (
+            new_process_id,
+            step_record.name,
+            step_record.description,
+            step_record.step_order,
+            to_jsonb(ARRAY[target_team_id]),
+            '{"fields": [{"key": "notes", "label": "Notes", "type": "text", "required": false}]}'::jsonb,
+            false,
+            true,
+            NEW.id
+          );
+        END IF;
+      END LOOP;
+    END LOOP;
+    RAISE LOG '✅ Created sample processes from template';
+  EXCEPTION WHEN OTHERS THEN
+    RAISE LOG '⚠️ Error creating sample processes: %', SQLERRM;
+  END;
+
+  RAISE LOG '🎉 First employee initialization complete! Sample data created for company %', NEW.company_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ==============================================================================
+-- PHASE 2: FIRST EMPLOYEE INITIALIZATION TRIGGER
+-- Creates sample data when the FIRST employee joins a company
+-- ==============================================================================
+
+CREATE OR REPLACE FUNCTION handle_first_employee_initialization()
+RETURNS TRIGGER AS $$
+DECLARE
+  employee_count INTEGER;
+  admin_team_id INTEGER;
   sample_project_id TEXT;
   sample_process_id INTEGER;
   sample_step_id INTEGER;
@@ -311,6 +588,7 @@ BEGIN
   -- ==========================================================================
   BEGIN
     INSERT INTO project_records (
+      id,
       project_title,
       description,
       start_date,
@@ -321,11 +599,12 @@ BEGIN
       company_id,
       created_by
     ) VALUES (
+      'welcome-project-' || lower(replace(NEW.id::text, '-', '')),
       'Sample Project - Getting Started',
       'This is a sample project to help you get familiar with the project management features. Feel free to edit or delete this project.',
       CURRENT_DATE,
       CURRENT_DATE + INTERVAL '30 days',
-      'ongoing',
+      'Ongoing',
       0,
       NEW.id,
       NEW.company_id,
@@ -346,6 +625,7 @@ BEGIN
 
   BEGIN
     INSERT INTO task_records (
+      id,
       task_title,
       task_description,
       start_date,
@@ -356,6 +636,7 @@ BEGIN
       assignees,
       created_by
     ) VALUES (
+      'welcome-task-' || lower(replace(NEW.id::text, '-', '')),
       'Welcome Task - Explore the System',
       'Welcome to Flow! This sample task helps you understand how task management works. You can create tasks, assign them to team members, set priorities, and track progress.',
       CURRENT_DATE,
