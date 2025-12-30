@@ -87,7 +87,7 @@ export default function GradeModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? "PencilSimple Grade" : "Create Grade"}
+      title={initialData ? "Edit Grade" : "Create Grade"}
       size="sm"
       preventBackdropClose={isSubmitting}
     >

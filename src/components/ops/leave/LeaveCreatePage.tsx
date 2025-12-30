@@ -152,6 +152,9 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
         <h1 className="text-xl font-bold text-foreground-primary mb-4 flex items-center">
           <Clock className="mr-2 h-5 w-5 text-blue-600" /> Leave Balance
         </h1>
+        <p className="text-sm text-foreground-tertiary mb-4">
+          Showing remaining balance for the current year
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 min-h-[100px]">
           {balancesLoading ? (
             <div className="col-span-full flex justify-center items-center h-full">
@@ -164,7 +167,10 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
                 className={`border rounded-lg px-4 py-5 text-center bg-${balance.color}-100 text-${balance.color}-800 border transition-all hover:shadow-md`}
               >
                 <div className="font-bold text-lg mb-1">{balance.balance} Days</div>
-                <div className="text-sm">{balance.leave_type_name}</div>
+                <div className="text-sm font-medium">{balance.leave_type_name}</div>
+                <div className="text-xs text-foreground-tertiary mt-1">
+                  Used: {balance.used || 0} / {balance.total_quota || balance.balance} days
+                </div>
               </div>
             ))
           )}

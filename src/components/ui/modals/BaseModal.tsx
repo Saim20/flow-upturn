@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "@phosphor-icons/react";
 import { fadeIn, fadeInUp } from "../animations";
@@ -24,6 +25,14 @@ export default function BaseModal({
   preventBackdropClose = false,
   className = "",
 }: BaseModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  // Wait for client-side mount before using portal
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   // Handle ESC key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -52,7 +61,7 @@ export default function BaseModal({
     }
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -102,4 +111,11 @@ export default function BaseModal({
       )}
     </AnimatePresence>
   );
+
+  // Use portal to render modal at document body level, escaping any parent overflow/z-index issues
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(modalContent, document.body);
 }

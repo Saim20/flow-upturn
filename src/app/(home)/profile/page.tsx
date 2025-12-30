@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { motion } from "framer-motion";
 import { BasicInfoTab, PersonalInfoTab } from "@/components/profile";
 import EducationExperienceTab from "./tabs/EducationExperienceTab";
-import { User, ClipboardText, GraduationCap, ChartBarHorizontal, FileText } from "@phosphor-icons/react";
+import EmailPreferencesSettings from "@/components/settings/EmailPreferencesSettings";
+import { User, ClipboardText, GraduationCap, ChartBarHorizontal, FileText, Bell } from "@phosphor-icons/react";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import PageHeader from "@/components/ui/PageHeader";
 import TabView, { TabItem } from "@/components/ui/TabView";
@@ -120,6 +121,13 @@ function ProfileContent() {
             </p>
           </div>
         ),
+      },
+      {
+        key: "notifications",
+        label: "Email Preferences",
+        icon: <Bell className="h-5 w-5" />,
+        color: "text-primary-500",
+        content: <EmailPreferencesSettings />,
       },
     ],
     []

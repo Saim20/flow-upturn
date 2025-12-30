@@ -727,9 +727,10 @@ export function useTasks() {
   // Mark a task as complete
   const completeTask = useCallback(async (taskId: string, projectId?: string, milestoneId?: number) => {
     const companyId = employeeInfo?.company_id;
-    if (!companyId) {
-      console.warn('Cannot complete task: Company ID not available');
-      return { success: false, error: new Error('Company ID not available') };
+    const userId = employeeInfo?.id;
+    if (!companyId || !userId) {
+      console.warn('Cannot complete task: Company ID or User ID not available');
+      return { success: false, error: new Error('Company ID or User ID not available') };
     }
 
     try {
@@ -753,6 +754,34 @@ export function useTasks() {
         await fetchTaskStats(projectId);
       }
 
+      // Send notification to task creator and supervisor
+      if (data) {
+        const recipients: string[] = [];
+        
+        // Add task creator if different from current user
+        if (data.created_by && data.created_by !== userId) {
+          recipients.push(data.created_by);
+        }
+        
+        // Add supervisor if exists
+        if (employeeInfo?.supervisor_id) {
+          recipients.push(employeeInfo.supervisor_id);
+        }
+
+        if (recipients.length > 0) {
+          createNotification({
+            title: "Task Completed",
+            message: `The task "${data.task_title}" has been marked as complete by ${employeeInfo?.name || 'a team member'}.`,
+            priority: 'normal',
+            type_id: 3,
+            recipient_id: recipients,
+            action_url: `/ops/tasks/${taskId}`,
+            company_id: typeof companyId === 'string' ? parseInt(companyId) : companyId,
+            department_id: data.department_id
+          });
+        }
+      }
+
       return { success: true, data };
     } catch (err) {
       captureSupabaseError(
@@ -763,7 +792,7 @@ export function useTasks() {
       console.error("Error completing task:", err);
       return { success: false, error: err };
     }
-  }, [getProjectTasks, getMilestoneTasks, fetchTaskStats, employeeInfo?.company_id]);
+  }, [getProjectTasks, getMilestoneTasks, fetchTaskStats, employeeInfo?.company_id, employeeInfo?.id, employeeInfo?.name, employeeInfo?.supervisor_id, createNotification]);
 
   // Reopen a completed task
   const reopenTask = useCallback(async (taskId: string, projectId?: string, milestoneId?: number) => {

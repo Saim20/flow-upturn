@@ -1174,7 +1174,7 @@ export default function StakeholderDetailPage({ params }: { params: Promise<{ id
         processSteps={stakeholder?.process?.steps || []}
         existingData={stakeholder?.additional_data || {}}
         title={stakeholder?.additional_data && Object.keys(stakeholder.additional_data).length > 0 
-          ? "PencilSimple Additional Data" 
+          ? "Edit Additional Data" 
           : "Select Additional Data"}
       />
     </div>

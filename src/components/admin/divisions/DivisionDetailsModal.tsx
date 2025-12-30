@@ -47,7 +47,7 @@ export default function DivisionDetailsModal({
   const divisionHead = employees?.find((employee) => employee.id === division.head_id);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <motion.div
         initial="hidden"
         animate="visible"
@@ -96,7 +96,7 @@ export default function DivisionDetailsModal({
             className="flex items-center gap-2 border border-border-primary text-foreground-secondary hover:bg-background-secondary dark:hover:bg-background-tertiary"
           >
             <PencilSimple size={18} weight="bold" />
-            PencilSimple
+            Edit
           </Button>
           <Button
             variant="danger"

@@ -41,7 +41,7 @@ export const EntityForm: React.FC<EntityFormProps> = ({
   return (
     <BaseForm
       onSubmit={onSubmit}
-      title={mode === 'create' ? `Create ${entityName}` : `PencilSimple ${entityName}`}
+      title={mode === 'create' ? `Create ${entityName}` : `Edit ${entityName}`}
       icon={icon}
       isLoading={isLoading}
       className={className}

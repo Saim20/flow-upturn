@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/auth-context";
 import { JOB_STATUS } from "@/lib/constants";
+import { createOffboardingNotification } from "@/lib/utils/notifications";
+import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
 
 export interface OffboardingEmployee {
   id: string;
@@ -181,6 +183,18 @@ export function useOffboarding() {
       setError(null);
 
       try {
+        // Fetch employee details first for notification/email
+        const { data: employeeData, error: fetchError } = await supabase
+          .from("employees")
+          .select("first_name, last_name, email, users!inner(id)")
+          .eq("id", data.employee_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const employeeName = `${employeeData.first_name} ${employeeData.last_name}`;
+        const employeeUserId = employeeData.users?.id;
+
         // Update employee job status
         const { error: updateError } = await supabase
           .from("employees")
@@ -191,17 +205,38 @@ export function useOffboarding() {
 
         if (updateError) throw updateError;
 
-        // You could also create an offboarding record in a separate table
-        // const { error: recordError } = await supabase
-        //   .from("offboarding_records")
-        //   .insert({
-        //     employee_id: data.employee_id,
-        //     offboarding_date: data.offboarding_date,
-        //     reason: data.reason,
-        //     offboarding_type: data.offboarding_type,
-        //     notes: data.notes,
-        //   });
-        // if (recordError) throw recordError;
+        // Send notification to the employee
+        if (employeeUserId) {
+          try {
+            await createOffboardingNotification(
+              employeeUserId,
+              'processed',
+              employeeName,
+              data.offboarding_type
+            );
+          } catch (notifError) {
+            console.error("Failed to send offboarding notification:", notifError);
+          }
+        }
+
+        // Send mandatory email to the employee (always send, no preference check)
+        if (employeeData.email) {
+          try {
+            await sendNotificationEmailAction({
+              to: employeeData.email,
+              subject: `Offboarding Notice - ${data.offboarding_type}`,
+              previewText: `Your employment status has been updated`,
+              heading: "Employment Status Update",
+              mainContent: `Dear ${employeeName},\n\nThis is to inform you that your employment status has been updated to "${data.offboarding_type}" as of ${new Date(data.offboarding_date).toLocaleDateString()}.\n\nReason: ${data.reason}${data.notes ? `\n\nAdditional Notes: ${data.notes}` : ""}\n\nPlease contact HR if you have any questions.`,
+              ctaText: "View Details",
+              ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/offboarding`,
+              footerText: "This is a mandatory employment notification.",
+              skipPreferenceCheck: true,
+            });
+          } catch (emailError) {
+            console.error("Failed to send offboarding email:", emailError);
+          }
+        }
 
         // Refresh the lists
         await fetchActiveEmployees();
@@ -229,6 +264,18 @@ export function useOffboarding() {
       setError(null);
 
       try {
+        // Fetch employee details first for notification/email
+        const { data: employeeData, error: fetchError } = await supabase
+          .from("employees")
+          .select("first_name, last_name, email, users!inner(id)")
+          .eq("id", employee_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const employeeName = `${employeeData.first_name} ${employeeData.last_name}`;
+        const employeeUserId = employeeData.users?.id;
+
         const { error: updateError } = await supabase
           .from("employees")
           .update({
@@ -237,6 +284,38 @@ export function useOffboarding() {
           .eq("id", employee_id);
 
         if (updateError) throw updateError;
+
+        // Send notification to the employee
+        if (employeeUserId) {
+          try {
+            await createOffboardingNotification(
+              employeeUserId,
+              'reactivated',
+              employeeName
+            );
+          } catch (notifError) {
+            console.error("Failed to send reactivation notification:", notifError);
+          }
+        }
+
+        // Send mandatory email to the employee (always send, no preference check)
+        if (employeeData.email) {
+          try {
+            await sendNotificationEmailAction({
+              to: employeeData.email,
+              subject: "Employment Reactivated",
+              previewText: "Your employment has been reactivated",
+              heading: "Welcome Back!",
+              mainContent: `Dear ${employeeName},\n\nWe are pleased to inform you that your employment has been reactivated. Your status has been restored to Active.\n\nPlease contact HR if you have any questions or need assistance getting started again.`,
+              ctaText: "Go to Dashboard",
+              ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/home`,
+              footerText: "This is a mandatory employment notification.",
+              skipPreferenceCheck: true,
+            });
+          } catch (emailError) {
+            console.error("Failed to send reactivation email:", emailError);
+          }
+        }
 
         // Refresh the lists
         await fetchActiveEmployees();

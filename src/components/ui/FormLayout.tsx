@@ -29,7 +29,7 @@ export function FormLayout({
   onCancel,
   children,
   isLoading = false,
-  saveLabel = "FloppyDisk",
+  saveLabel = "Save",
   cancelLabel = "Cancel",
   className = "",
   showBackButton = true,

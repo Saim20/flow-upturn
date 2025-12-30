@@ -41,7 +41,7 @@ export default function DepartmentModal({
     name: initialData?.name ?? "",
     head_id: initialData?.head_id ?? "",
     description: initialData?.description ?? "",
-    division_id: initialData?.division_id ?? 0,
+    division_id: initialData?.division_id ?? undefined,
   });
 
   const [errors, setErrors] = useState<Partial<Department>>({});
@@ -81,9 +81,10 @@ export default function DepartmentModal({
     const { name, value } = e.target;
 
     if (name === "division_id") {
+      const numValue = Number(value);
       setFormValues((prev) => ({
         ...prev,
-        [name]: value === "" ? 0 : Number(value),
+        [name]: value === "" || isNaN(numValue) ? undefined : numValue,
       }));
     } else {
       setFormValues((prev) => ({ ...prev, [name]: value }));
@@ -144,7 +145,7 @@ export default function DepartmentModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? "PencilSimple Department" : "Create Department"}
+      title={initialData ? "Edit Department" : "Create Department"}
       size="sm"
       preventBackdropClose={isSubmitting}
     >
@@ -188,7 +189,7 @@ export default function DepartmentModal({
             options={divisionOptions}
             placeholder="Select Division"
             error={
-              touched.division_id ? String(errors.division_id) : undefined
+              touched.division_id && errors.division_id ? String(errors.division_id) : undefined
             }
             required
           />

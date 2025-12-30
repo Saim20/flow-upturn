@@ -249,7 +249,7 @@ export default function AccountPage() {
             <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 mb-3">
               <Gear className="w-6 h-6" />
             </div>
-            <h3 className="font-semibold text-foreground-primary mb-1">Account Gear</h3>
+            <h3 className="font-semibold text-foreground-primary mb-1">Account Settings</h3>
             <p className="text-sm text-foreground-tertiary">Manage your account preferences</p>
           </div>
         </div>

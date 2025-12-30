@@ -273,7 +273,7 @@ export default function TopBar() {
                   onClick={() => setUserMenuOpen(false)}
                 >
                   <Gear className="h-4 w-4 mr-2" />
-                  Gear
+                  Settings
                 </Link> */}
 
                 <div className="border-t border-border-primary mt-1">

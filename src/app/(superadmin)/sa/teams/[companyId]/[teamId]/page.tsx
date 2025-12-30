@@ -582,7 +582,7 @@ export default function TeamDetailPage() {
             </div>
           </div>
           
-          {/* FloppyDisk/Reset buttons */}
+          {/* Save/Reset buttons */}
           <div className="flex items-center gap-2">
             {permissionsDirty && (
               <motion.div

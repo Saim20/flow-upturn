@@ -40,7 +40,7 @@ export default function SetupStep1({
     company_id: "",
     industry_id: "",
     country_id: "",
-    // Operations Gear
+    // Operations Settings
     live_absent_enabled: false,
     fiscal_year_start: "2024-01-01",
   });
@@ -74,7 +74,7 @@ export default function SetupStep1({
         company_id: companyInfo.code || "",
         industry_id: companyInfo.industry_id?.toString() || "",
         country_id: companyInfo.country_id?.toString() || "",
-        // Operations Gear - add defaults if not present
+        // Operations Settings - add defaults if not present
         live_absent_enabled: companyInfo.live_absent_enabled ?? false,
         fiscal_year_start: companyInfo.fiscal_year_start ?? "2024-01-01",
       });

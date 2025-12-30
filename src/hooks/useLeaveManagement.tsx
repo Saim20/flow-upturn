@@ -9,6 +9,9 @@ import { useNotifications } from "./useNotifications";
 import { HolidayConfig, LeaveType } from "@/lib/types";
 import { usePermissions } from "./usePermissions";
 import { captureSupabaseError } from "@/lib/sentry";
+import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { checkUserEmailPreference } from "./useEmailPreferences";
+import { createLeaveRequestNotification } from "@/lib/utils/notifications";
 
 
 export type { LeaveType, HolidayConfig };
@@ -122,7 +125,21 @@ export function useLeaveRequests() {
 
       const result = await baseResult.updateItem(leaveId, leaveData);
 
-      const recipients = [employeeId].filter(Boolean) as string[];
+      // Fetch employee and leave type details for notification
+      const { data: empData } = await supabase
+        .from("employees")
+        .select("first_name, last_name, email, users!inner(id)")
+        .eq("id", employeeId)
+        .single();
+
+      const { data: leaveTypeData } = await supabase
+        .from("leave_types")
+        .select("name")
+        .eq("id", leaveTypeId)
+        .single();
+
+      const employeeName = empData ? `${empData.first_name} ${empData.last_name}` : "Employee";
+      const leaveTypeName = leaveTypeData?.name || "Leave";
 
       if (leaveData.status === "Accepted") {
         const parseDate = (str: string) => new Date(str.replace(" ", "T"));
@@ -137,18 +154,102 @@ export function useLeaveRequests() {
           ) + 1;
 
         await reduceBalance(employeeId, leaveTypeId, diffInDays);
-      }
 
-      createNotification({
-        title: "Leave request updated",
-        message: `Your leave request has been updated to status: ${leaveData.status}.`,
-        priority: "normal",
-        type_id: 2,
-        recipient_id: recipients,
-        action_url: "/ops/leave",
-        company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
-        department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
-      });
+        // Send approval notification
+        if (empData?.users?.id) {
+          try {
+            await createLeaveRequestNotification(
+              empData.users.id,
+              'approved',
+              {
+                leaveType: leaveTypeName,
+                startDate: start_date,
+                endDate: end_date,
+              },
+              {
+                referenceId: leaveId,
+                actionUrl: '/ops/leave',
+              }
+            );
+          } catch (notifError) {
+            console.error("Failed to send leave approval notification:", notifError);
+          }
+        }
+
+        // Send approval email
+        if (empData?.email && empData?.users?.id) {
+          try {
+            const canSendEmail = await checkUserEmailPreference(empData.users.id, 'leave_approval');
+            if (canSendEmail) {
+              await sendNotificationEmailAction({
+                to: empData.email,
+                subject: `Leave Request Approved: ${leaveTypeName}`,
+                previewText: `Your ${leaveTypeName.toLowerCase()} leave request has been approved`,
+                heading: "Leave Request Approved",
+                mainContent: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} has been approved.\n\nEnjoy your time off!`,
+                ctaText: "View Leave",
+                ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/leave`,
+                footerText: "You received this because your leave request was approved.",
+              });
+            }
+          } catch (emailError) {
+            console.error("Failed to send leave approval email:", emailError);
+          }
+        }
+      } else if (leaveData.status === "Rejected") {
+        // Send rejection notification
+        if (empData?.users?.id) {
+          try {
+            await createLeaveRequestNotification(
+              empData.users.id,
+              'rejected',
+              {
+                leaveType: leaveTypeName,
+                reason: leaveData.remarks || "No reason provided",
+              },
+              {
+                referenceId: leaveId,
+                actionUrl: '/ops/leave',
+              }
+            );
+          } catch (notifError) {
+            console.error("Failed to send leave rejection notification:", notifError);
+          }
+        }
+
+        // Send rejection email
+        if (empData?.email && empData?.users?.id) {
+          try {
+            const canSendEmail = await checkUserEmailPreference(empData.users.id, 'leave_rejection');
+            if (canSendEmail) {
+              await sendNotificationEmailAction({
+                to: empData.email,
+                subject: `Leave Request Not Approved: ${leaveTypeName}`,
+                previewText: `Your ${leaveTypeName.toLowerCase()} leave request was not approved`,
+                heading: "Leave Request Update",
+                mainContent: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} was not approved.\n\n${leaveData.remarks ? `Reason: ${leaveData.remarks}` : ""}\n\nPlease contact your supervisor if you have any questions.`,
+                ctaText: "View Leave",
+                ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/leave`,
+                footerText: "You received this because your leave request was updated.",
+              });
+            }
+          } catch (emailError) {
+            console.error("Failed to send leave rejection email:", emailError);
+          }
+        }
+      } else {
+        // Generic status update notification (for Pending status revert)
+        createNotification({
+          title: "Leave request updated",
+          message: `Your leave request has been updated to status: ${leaveData.status}.`,
+          priority: "normal",
+          type_id: 2,
+          recipient_id: [employeeId].filter(Boolean) as string[],
+          action_url: "/ops/leave",
+          company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
+          department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+        });
+      }
 
       return result;
     } catch (error) {

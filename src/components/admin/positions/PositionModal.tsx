@@ -51,7 +51,7 @@ export default function PositionModal({
 
   return (
     <FormModal<Position>
-      title={initialData ? "PencilSimple Position" : "Create Position"}
+      title={initialData ? "Edit Position" : "Create Position"}
       icon={<Briefcase size={24} weight="duotone" />}
       initialValues={initialValues}
       validationFn={validatePosition}
