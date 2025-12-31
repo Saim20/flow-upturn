@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { LeaveState } from "./LeaveCreatePage";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -12,7 +12,7 @@ import { Card, CardHeader, CardContent, StatusBadge, InfoRow } from "@/component
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getCompanyId, getEmployeeInfo } from "@/lib/utils/auth";
 
-interface LeaveRecordWithRequestedTo extends LeaveState {
+interface LeaveRecordWithRequestedTo extends Omit<LeaveState, 'requested_to'> {
   requested_to?: string | null;
 }
 
@@ -23,7 +23,7 @@ export default function LeaveHistoryPage() {
   const { leaveTypes, fetchLeaveTypes } = useLeaveTypes();
   const { employees, fetchEmployeesByIds } = useEmployees();
 
-  async function fetchLeaveHistory() {
+  const fetchLeaveHistory = useCallback(async () => {
     setLoading(true);
 
     const user = await getEmployeeInfo();
@@ -51,12 +51,12 @@ export default function LeaveHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [fetchEmployeesByIds]);
 
   useEffect(() => {
     fetchLeaveHistory();
     fetchLeaveTypes();
-  }, []);
+  }, [fetchLeaveHistory, fetchLeaveTypes]);
 
   if (loading) {
     return (
