@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, Envelope, EnvelopeOpen, Warning, CheckCircle, SpinnerGap } from "@phosphor-icons/react";
-import { useEmailPreferences, emailPreferenceCategories, EmailPreferences } from "@/hooks/useEmailPreferences";
+import { useEmailPreferences, emailPreferenceCategories, EmailPreferences, EmailPreferencesData } from "@/hooks/useEmailPreferences";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { toast } from "sonner";
 
@@ -91,7 +91,6 @@ export default function EmailPreferencesSettings() {
     error,
     fetchPreferences,
     updatePreference,
-    updating,
   } = useEmailPreferences();
 
   const [localPrefs, setLocalPrefs] = useState<EmailPreferences | null>(null);
@@ -126,7 +125,7 @@ export default function EmailPreferencesSettings() {
     }
   };
 
-  const isGlobalDisabled = localPrefs?.global_enabled === false;
+  const isGlobalDisabled = localPrefs?.preferences?.global_enabled === false;
 
   if (loading) {
     return (
@@ -180,7 +179,7 @@ export default function EmailPreferencesSettings() {
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {localPrefs.global_enabled ? (
+              {localPrefs.preferences.global_enabled ? (
                 <EnvelopeOpen className="w-8 h-8 text-success" />
               ) : (
                 <Envelope className="w-8 h-8 text-foreground-tertiary" />
@@ -195,7 +194,7 @@ export default function EmailPreferencesSettings() {
               </div>
             </div>
             <ToggleSwitch
-              checked={localPrefs.global_enabled}
+              checked={localPrefs.preferences.global_enabled}
               onChange={(value) => handlePreferenceChange('global_enabled', value)}
               disabled={savingKey === 'global_enabled'}
             />
@@ -210,7 +209,7 @@ export default function EmailPreferencesSettings() {
           animate={{ opacity: 1, height: 'auto' }}
           className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30"
         >
-          <Warning className="w-5 h-5 text-warning flex-shrink-0" />
+          <Warning className="w-5 h-5 text-warning shrink-0" />
           <p className="text-sm text-warning">
             Email notifications are disabled. Enable the master switch above to receive emails.
           </p>
@@ -232,7 +231,7 @@ export default function EmailPreferencesSettings() {
                 prefKey={key}
                 title={config.title}
                 description={config.description}
-                checked={localPrefs[key as keyof EmailPreferences] ?? true}
+                checked={(localPrefs.preferences[key as keyof EmailPreferencesData] as boolean) ?? true}
                 onChange={handlePreferenceChange}
                 disabled={isGlobalDisabled}
                 isLoading={savingKey === key}
@@ -254,7 +253,7 @@ export default function EmailPreferencesSettings() {
                 prefKey={key}
                 title={config.title}
                 description={config.description}
-                checked={localPrefs[key as keyof EmailPreferences] ?? true}
+                checked={(localPrefs.preferences[key as keyof EmailPreferencesData] as boolean) ?? true}
                 onChange={handlePreferenceChange}
                 disabled={isGlobalDisabled}
                 isLoading={savingKey === key}
@@ -276,7 +275,7 @@ export default function EmailPreferencesSettings() {
                 prefKey={key}
                 title={config.title}
                 description={config.description}
-                checked={localPrefs[key as keyof EmailPreferences] ?? true}
+                checked={(localPrefs.preferences[key as keyof EmailPreferencesData] as boolean) ?? true}
                 onChange={handlePreferenceChange}
                 disabled={isGlobalDisabled}
                 isLoading={savingKey === key}
@@ -298,7 +297,7 @@ export default function EmailPreferencesSettings() {
                 prefKey={key}
                 title={config.title}
                 description={config.description}
-                checked={localPrefs[key as keyof EmailPreferences] ?? true}
+                checked={(localPrefs.preferences[key as keyof EmailPreferencesData] as boolean) ?? true}
                 onChange={handlePreferenceChange}
                 disabled={isGlobalDisabled}
                 isLoading={savingKey === key}
@@ -320,7 +319,7 @@ export default function EmailPreferencesSettings() {
                 prefKey={key}
                 title={config.title}
                 description={config.description}
-                checked={localPrefs[key as keyof EmailPreferences] ?? true}
+                checked={(localPrefs.preferences[key as keyof EmailPreferencesData] as boolean) ?? true}
                 onChange={handlePreferenceChange}
                 disabled={isGlobalDisabled}
                 isLoading={savingKey === key}
@@ -332,7 +331,7 @@ export default function EmailPreferencesSettings() {
 
       {/* Info Footer */}
       <div className="flex items-start gap-2 p-4 rounded-lg bg-info/10 border border-info/30">
-        <CheckCircle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+        <CheckCircle className="w-5 h-5 text-info shrink-0 mt-0.5" />
         <div className="text-sm text-info">
           <p className="font-medium">Note about mandatory emails</p>
           <p className="mt-1 opacity-80">

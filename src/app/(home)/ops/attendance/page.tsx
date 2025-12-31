@@ -179,7 +179,7 @@ function AttendancePageContent() {
       icon: <Clock className="h-5 w-5" />,
       color: "text-primary-600",
       content: todayLoading || sitesLoading ? (
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-100">
           <div className="flex flex-col items-center gap-3">
             <Clock className="h-8 w-8 text-primary-600 animate-pulse" />
             <p className="text-sm text-foreground-secondary">Loading attendance...</p>
@@ -267,7 +267,7 @@ export default function AttendancePage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-100">
           <div className="flex flex-col items-center gap-3">
             <Calendar className="h-8 w-8 text-blue-600 animate-pulse" />
             <p className="text-sm text-foreground-secondary">Loading attendance...</p>

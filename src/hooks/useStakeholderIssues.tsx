@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { StakeholderIssue, StakeholderIssueAttachment, LinkedStepField, StakeholderIssueRequiredField } from "@/lib/types/schemas";
 import { createStakeholderIssueNotification } from "@/lib/utils/notifications";
 import { captureSupabaseError, logError } from "@/lib/sentry";
-import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 import { checkUserEmailPreference } from "./useEmailPreferences";
 
 // ==============================================================================
@@ -611,18 +611,17 @@ export function useStakeholderIssues() {
                   .eq("id", stakeholderData.kam_id)
                   .single();
 
-                if (kamEmployee?.email && kamEmployee.users?.id) {
-                  const canSendEmail = await checkUserEmailPreference(kamEmployee.users.id, 'stakeholder_issue_high_priority');
+                if (kamEmployee?.email && kamEmployee.users && Array.isArray(kamEmployee.users) && kamEmployee.users[0]?.id) {
+                  const canSendEmail = await checkUserEmailPreference(kamEmployee.users[0].id, 'stakeholder_issue_high_priority');
                   if (canSendEmail) {
                     await sendNotificationEmailAction({
-                      to: kamEmployee.email,
-                      subject: `${issueData.priority} Priority Issue: ${issueData.title}`,
-                      previewText: `A ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}`,
-                      heading: `${issueData.priority} Priority Stakeholder Issue`,
-                      mainContent: `Dear ${kamEmployee.first_name} ${kamEmployee.last_name},\n\nA ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
-                      ctaText: "View Issue",
-                      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/stakeholder-issues/${data.id}`,
-                      footerText: "You received this because you are the Key Account Manager for this stakeholder.",
+                      recipientEmail: kamEmployee.email,
+                      recipientName: `${kamEmployee.first_name} ${kamEmployee.last_name}`,
+                      title: `${issueData.priority} Priority Issue: ${issueData.title}`,
+                      message: `A ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
+                      priority: issueData.priority === 'Urgent' ? 'urgent' : 'high',
+                      actionUrl: `/stakeholder-issues/${data.id}`,
+                      context: 'stakeholder_issue',
                     });
                   }
                 }
@@ -656,18 +655,17 @@ export function useStakeholderIssues() {
                   .eq("id", issueData.assigned_to)
                   .single();
 
-                if (assignedEmployee?.email && assignedEmployee.users?.id) {
-                  const canSendEmail = await checkUserEmailPreference(assignedEmployee.users.id, 'stakeholder_issue_high_priority');
+                if (assignedEmployee?.email && assignedEmployee.users && Array.isArray(assignedEmployee.users) && assignedEmployee.users[0]?.id) {
+                  const canSendEmail = await checkUserEmailPreference(assignedEmployee.users[0].id, 'stakeholder_issue_high_priority');
                   if (canSendEmail) {
                     await sendNotificationEmailAction({
-                      to: assignedEmployee.email,
-                      subject: `${issueData.priority} Priority Issue Assigned: ${issueData.title}`,
-                      previewText: `A ${issueData.priority.toLowerCase()} priority issue has been assigned to you`,
-                      heading: `${issueData.priority} Priority Issue Assigned`,
-                      mainContent: `Dear ${assignedEmployee.first_name} ${assignedEmployee.last_name},\n\nA ${issueData.priority.toLowerCase()} priority issue has been assigned to you for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
-                      ctaText: "View Issue",
-                      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/stakeholder-issues/${data.id}`,
-                      footerText: "You received this because this issue was assigned to you.",
+                      recipientEmail: assignedEmployee.email,
+                      recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+                      title: `${issueData.priority} Priority Issue Assigned: ${issueData.title}`,
+                      message: `A ${issueData.priority.toLowerCase()} priority issue has been assigned to you for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
+                      priority: issueData.priority === 'Urgent' ? 'urgent' : 'high',
+                      actionUrl: `/stakeholder-issues/${data.id}`,
+                      context: 'stakeholder_issue',
                     });
                   }
                 }

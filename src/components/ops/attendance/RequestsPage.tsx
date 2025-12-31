@@ -141,9 +141,9 @@ export default function AttendanceRequestsPage() {
           .eq("id", selectedRequest.employee_id)
           .single();
 
-        if (empData?.users?.id) {
+        if (empData?.users && Array.isArray(empData.users) && empData.users[0]?.id) {
           await createAttendanceRequestNotification(
-            empData.users.id,
+            empData.users[0].id,
             notificationType,
             {
               requestType,
