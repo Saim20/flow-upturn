@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStakeholders } from "@/hooks/useStakeholders";
-import { Plus, Gear, TrashSimple, PencilSimple } from "@phosphor-icons/react";
+import { Plus, Gear, TrashSimple, PencilSimple, Warning } from "@phosphor-icons/react";
 import { StakeholderProcess } from "@/lib/types/schemas";
 import ProcessForm from "@/components/stakeholder-processes/ProcessForm";
 import { InlineSpinner } from "@/components/ui";
@@ -12,9 +12,11 @@ export default function StakeholderProcessesPage() {
   const router = useRouter();
   const {
     processes,
+    stakeholders,
     loading,
     error,
     fetchProcesses,
+    fetchStakeholders,
     createProcess,
     deleteProcess,
     processingId,
@@ -22,14 +24,36 @@ export default function StakeholderProcessesPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState<StakeholderProcess | null>(null);
+  const [processToDelete, setProcessToDelete] = useState<StakeholderProcess | null>(null);
+  const [deletingProcess, setDeletingProcess] = useState(false);
+  const [stakeholderCount, setStakeholderCount] = useState<number>(0);
 
   useEffect(() => {
     fetchProcesses();
-  }, [fetchProcesses]);
+    fetchStakeholders();
+  }, [fetchProcesses, fetchStakeholders]);
 
-  const handleDelete = async (processId: number) => {
-    if (window.confirm("Are you sure you want to delete this process? This will affect all stakeholders using this process.")) {
-      await deleteProcess(processId);
+  const handleDeleteClick = async (process: StakeholderProcess) => {
+    // Check how many stakeholders are using this process
+    const count = stakeholders.filter(s => s.process_id === process.id).length;
+    
+    setStakeholderCount(count);
+    setProcessToDelete(process);
+  };
+
+  const confirmDelete = async () => {
+    if (!processToDelete?.id) return;
+    
+    setDeletingProcess(true);
+    try {
+      const success = await deleteProcess(processToDelete.id);
+      if (success) {
+        setProcessToDelete(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete process:", error);
+    } finally {
+      setDeletingProcess(false);
     }
   };
 
@@ -151,7 +175,7 @@ export default function StakeholderProcessesPage() {
                     <PencilSimple size={18} />
                   </button>
                   <button
-                    onClick={() => handleDelete(process.id!)}
+                    onClick={() => handleDeleteClick(process)}
                     disabled={processingId === process.id}
                     className="p-2 text-foreground-secondary hover:text-error hover:bg-error/10 dark:hover:bg-error/20 rounded transition-colors disabled:opacity-50"
                     title="Delete process"
@@ -169,7 +193,7 @@ export default function StakeholderProcessesPage() {
         </div>
       )}
 
-      {/* TODO: Add Create/Edit Modal */}
+      {/* Create/Edit Modal */}
       {showCreateModal && (
         <ProcessForm
           process={null}
@@ -179,6 +203,66 @@ export default function StakeholderProcessesPage() {
           }}
           onClose={() => setShowCreateModal(false)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {processToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-primary rounded-lg p-6 max-w-lg w-full mx-4 border border-error/30">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="shrink-0 w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
+                <Warning size={24} weight="fill" className="text-error" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-foreground-primary mb-1">
+                  Delete Process: {processToDelete.name}
+                </h3>
+                <p className="text-sm text-foreground-secondary">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-error/5 border border-error/20 rounded-lg p-4 mb-4 space-y-3">
+              <p className="text-sm font-semibold text-error">
+                Warning: This will DELETE DATA:
+              </p>
+              <ul className="text-sm text-foreground-secondary space-y-2 ml-4 list-disc">
+                <li>
+                  <strong>{processToDelete.step_count || 0}</strong> process step(s) and all their configurations
+                </li>
+                <li>
+                  All step data entered by users for these steps
+                </li>
+                <li>
+                  Historical records of completed steps
+                </li>
+                {stakeholderCount > 0 && (
+                  <li className="text-error font-semibold">
+                    <strong>{stakeholderCount}</strong> stakeholder(s) currently using this process
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
+              <button
+                onClick={() => setProcessToDelete(null)}
+                disabled={deletingProcess}
+                className="w-full sm:w-auto px-4 py-2 border border-border-secondary text-foreground-secondary rounded-lg hover:bg-background-secondary transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deletingProcess}
+                className="w-full sm:w-auto px-4 py-2 bg-error text-white rounded-lg hover:bg-error/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deletingProcess ? "Deleting..." : "Delete Process"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

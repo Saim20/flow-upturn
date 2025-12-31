@@ -88,10 +88,13 @@ export const ClaimTypeUpdateModal: React.FC<ClaimTypeUpdateModalProps> = ({
             onChange={handleChange}
             error={errors.settlement_level_id}
             placeholder="Select Settlement Level"
-            options={allPositions.map(position => ({
-              value: String(position.id),
-              label: position.name
-            }))}
+            options={[
+              { value: '', label: 'None' },
+              ...allPositions.map(position => ({
+                value: String(position.id),
+                label: position.name
+              }))
+            ]}
           />
         </>
       )}

@@ -92,9 +92,19 @@ export function useProfile() {
     setLoading(true);
     setError(null);
     try {
-      // FunnelSimple out undefined values and empty objects
+      // Fields that can be explicitly set to null
+      const nullableFields = ['supervisor_id'];
+      
+      // Filter out undefined values, but keep null for nullable fields
       const updateData = Object.fromEntries(
-        Object.entries(data).filter(([_, value]) => value !== undefined && value !== null)
+        Object.entries(data).filter(([key, value]) => {
+          // Always filter out undefined
+          if (value === undefined) return false;
+          // Keep null only for nullable fields
+          if (value === null) return nullableFields.includes(key);
+          // Keep all other values
+          return true;
+        })
       );
       
       if (Object.keys(updateData).length === 0) {

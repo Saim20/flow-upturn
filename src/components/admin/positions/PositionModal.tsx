@@ -82,7 +82,6 @@ export default function PositionModal({
             onChange={handleChange}
             options={departmentOptions}
             error={errors.department_id}
-            required
           />
 
           <SelectField
@@ -92,7 +91,6 @@ export default function PositionModal({
             onChange={handleChange}
             options={gradeOptions}
             error={errors.grade}
-            required
           />
 
           <TextAreaField

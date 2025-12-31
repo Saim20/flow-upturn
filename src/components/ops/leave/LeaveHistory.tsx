@@ -7,13 +7,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useLeaveTypes } from "@/hooks/useConfigTypes";
 import LoadingSection from "@/app/(home)/home/components/LoadingSection";
-import { Calendar, User, FileText, Clock } from "@phosphor-icons/react";
+import { Calendar, User, FileText, Clock, Lightning } from "@phosphor-icons/react";
 import { Card, CardHeader, CardContent, StatusBadge, InfoRow } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getCompanyId, getEmployeeInfo } from "@/lib/utils/auth";
 
+interface LeaveRecordWithRequestedTo extends LeaveState {
+  requested_to?: string | null;
+}
+
 export default function LeaveHistoryPage() {
-  const [leaveRequests, setLeaveRequests] = useState<LeaveState[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRecordWithRequestedTo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { leaveTypes, fetchLeaveTypes } = useLeaveTypes();
@@ -25,6 +29,7 @@ export default function LeaveHistoryPage() {
     const user = await getEmployeeInfo();
     const company_id = await getCompanyId();
     if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from("leave_records")
@@ -96,13 +101,22 @@ export default function LeaveHistoryPage() {
                     subtitle={`${req.start_date} - ${req.end_date}`}
                     icon={<Calendar size={20} />}
                     action={
-                      <StatusBadge 
-                        status={req.status || "pending"} 
-                        variant={
-                          req.status === "Accepted" ? "success" : 
-                          req.status === "Rejected" ? "error" : "warning"
-                        }
-                      />
+                      <div className="flex items-center gap-2">
+                        {/* Auto-approved badge: show if accepted and no requested_to (no supervisor at time of request) */}
+                        {req.status === "Accepted" && !req.requested_to && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300">
+                            <Lightning size={12} />
+                            Auto-approved
+                          </span>
+                        )}
+                        <StatusBadge 
+                          status={req.status || "pending"} 
+                          variant={
+                            req.status === "Accepted" ? "success" : 
+                            req.status === "Rejected" ? "error" : "warning"
+                          }
+                        />
+                      </div>
                     }
                   />
                   

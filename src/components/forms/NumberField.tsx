@@ -60,7 +60,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
           <input
             type="number"
             name={name}
-            value={value}
+            value={value ?? ''}
             onChange={onChange}
             min={min}
             max={max}
@@ -85,7 +85,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
           <input
             type="number"
             name={name}
-            value={value}
+            value={value ?? ''}
             onChange={onChange}
             min={min}
             max={max}

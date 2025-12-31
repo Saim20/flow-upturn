@@ -5,7 +5,7 @@ import { useLeaveTypes } from "@/hooks/useConfigTypes";
 import { Leave } from "@/lib/types";
 import { validateLeave, validationErrorsToObject } from "@/lib/utils/validation";
 import React, { useEffect, useState } from "react";
-import { Calendar, CheckCircle, Clock, Info } from "@phosphor-icons/react";
+import { Calendar, CheckCircle, Clock, Info, Lightning } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { getEmployeeInfo } from "@/lib/utils/auth";
@@ -97,27 +97,40 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // Prevent double submission
+    if (isSubmitting) return;
+
+    // Set submitting state immediately to prevent double clicks
+    setIsSubmitting(true);
+
     // Mark all fields as touched
     setTouched({ type_id: true, start_date: true, end_date: true, description: true });
 
-    if (!isValid) return;
+    if (!isValid) {
+      setIsSubmitting(false);
+      return;
+    }
 
     // Check leave balance
     const balanceRecord = leaveBalances.find(b => b.type_id === leaveRecord.type_id);
     if (!balanceRecord) {
       toast.error("No leave balance found for this leave type.");
+      setIsSubmitting(false);
       return;
     }
 
     if (daysCount > balanceRecord.balance) {
       toast.error(`Insufficient leave balance. You only have ${balanceRecord.balance} day${balanceRecord.balance !== 1 ? "s" : ""} remaining for the selected leave type.`);
+      setIsSubmitting(false);
       return;
     }
 
     const client = createClient();
     const user = await getEmployeeInfo();
-    if (!user) return;
-    setIsSubmitting(true);
+    if (!user) {
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const formattedLeave = {
@@ -130,7 +143,11 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
       const response = await createLeaveRequest(formattedLeave);
       if (response?.error) throw response.error;
 
-      toast.success("Leave application submitted successfully!");
+      // Show appropriate success message based on supervisor status
+      const successMessage = user.supervisor_id 
+        ? "Leave application submitted successfully!" 
+        : "Leave application auto-approved successfully!";
+      toast.success(successMessage);
       setLeaveRecord(initialLeaveRecord);
       setTouched({});
       
@@ -242,6 +259,16 @@ export default function LeaveCreatePage({ setActiveTab }: { setActiveTab: (key: 
             placeholder="Please provide details about your leave request..."
             error={touched.description ? errors.description : undefined}
           />
+
+          {/* Auto-approval hint for users without supervisor */}
+          {user && !user.supervisor_id && (
+            <div className="flex items-center p-3 bg-success-50 dark:bg-success-900/20 rounded-md border border-success-200 dark:border-success-800">
+              <Lightning className="h-5 w-5 text-success-600 dark:text-success-400 mr-2 shrink-0" />
+              <span className="text-success-800 dark:text-success-300 text-sm">
+                <strong>Auto-approval:</strong> Your leave request will be automatically approved since you don&apos;t have an assigned supervisor.
+              </span>
+            </div>
+          )}
 
           {/* Submit */}
           <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t border-border-primary">

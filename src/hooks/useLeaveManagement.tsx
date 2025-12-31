@@ -66,7 +66,7 @@ export function useLeaveRequests() {
   const { createNotification } = useNotifications();
   const { canApprove, isSupervisorOf, getSubordinates } = usePermissions();
 
-  // Create leave request (same as before)
+  // Create leave request - auto-approve if no supervisor
   const createLeaveRequest = async (leaveData: any) => {
     if (!employeeInfo) {
       console.warn('Cannot create leave request: Employee info not available');
@@ -74,19 +74,49 @@ export function useLeaveRequests() {
     }
 
     try {
-      const result = await baseResult.createItem(leaveData);
+      // Check if employee has a supervisor - check both employeeInfo and the data being passed
+      // This handles cases where the data might be fresher than the context
+      const hasSupervisor = !!employeeInfo.supervisor_id || !!leaveData.requested_to;
+      
+      // If no supervisor, auto-approve the leave request
+      const finalLeaveData = hasSupervisor 
+        ? leaveData 
+        : { ...leaveData, status: 'Accepted' };
 
-      const recipients = [employeeInfo.supervisor_id].filter(Boolean) as string[];
-      createNotification({
-        title: "New Leave Request",
-        message: `A new leave request has been submitted by ${employeeInfo.name}.`,
-        priority: "normal",
-        type_id: 2,
-        recipient_id: recipients,
-        action_url: "/ops/leave",
-        company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
-        department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
-      });
+      const result = await baseResult.createItem(finalLeaveData);
+
+      if (hasSupervisor) {
+        // Normal flow: notify supervisor for approval
+        const recipients = [employeeInfo.supervisor_id].filter(Boolean) as string[];
+        createNotification({
+          title: "New Leave Request",
+          message: `A new leave request has been submitted by ${employeeInfo.name}.`,
+          priority: "normal",
+          type_id: 2,
+          recipient_id: recipients,
+          action_url: "/ops/leave",
+          company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
+          department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+        });
+      } else {
+        // Auto-approved: reduce leave balance and notify the employee
+        if (result?.data?.[0]) {
+          const leaveRecord = result.data[0];
+          
+          // Reduce leave balance for auto-approved leave
+          const parseDate = (str: string) => new Date(str.replace(" ", "T"));
+          const start = parseDate(leaveData.start_date);
+          const end = parseDate(leaveData.end_date);
+          const diffInDays =
+            Math.floor(
+              (Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
+                Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
+                (1000 * 60 * 60 * 24)
+            ) + 1;
+
+          await reduceBalance(employeeInfo.id, leaveData.type_id, diffInDays);
+        }
+      }
 
       return result;
     } catch (error) {
