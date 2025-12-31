@@ -25,11 +25,12 @@ serve(async (req: any) => {
   }
 
   for (const company of companies || []) {
-    // 2. Get employees of the company
+    // 2. Get active employees of the company (exclude offboarded)
     const { data: employees, error: empErr } = await supabase
       .from("employees")
       .select("id, supervisor_id")
-      .eq("company_id", company.id);
+      .eq("company_id", company.id)
+      .in("job_status", ['Active', 'Probation']);
 
     if (empErr) {
       console.error(`Error fetching employees for company ${company.id}:`, empErr);

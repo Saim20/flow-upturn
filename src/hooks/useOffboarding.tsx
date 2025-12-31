@@ -3,9 +3,9 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/auth-context";
-import { JOB_STATUS } from "@/lib/constants";
+import { JOB_STATUS, ACTIVE_STATUSES } from "@/lib/constants";
 import { createOffboardingNotification } from "@/lib/utils/notifications";
-import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 
 export interface OffboardingEmployee {
   id: string;
@@ -70,7 +70,7 @@ export function useOffboarding() {
           departments!employees_department_id_fkey(name)
         `)
         .eq("company_id", companyId)
-        .eq("job_status", JOB_STATUS.ACTIVE)
+        .in("job_status", ACTIVE_STATUSES)
         .order("first_name", { ascending: true });
 
       if (fetchError) throw fetchError;
@@ -193,7 +193,8 @@ export function useOffboarding() {
         if (fetchError) throw fetchError;
 
         const employeeName = `${employeeData.first_name} ${employeeData.last_name}`;
-        const employeeUserId = employeeData.users?.id;
+        const users = employeeData.users as any;
+        const employeeUserId = Array.isArray(users) ? users[0]?.id : users?.id;
 
         // Update employee job status
         const { error: updateError } = await supabase
@@ -205,14 +206,25 @@ export function useOffboarding() {
 
         if (updateError) throw updateError;
 
+        // Remove employee from all teams
+        const { error: teamRemovalError } = await supabase
+          .from("team_members")
+          .delete()
+          .eq("employee_id", data.employee_id);
+
+        if (teamRemovalError) {
+          console.error("Failed to remove employee from teams:", teamRemovalError);
+          // Don't throw - continue with offboarding even if team removal fails
+        }
+
         // Send notification to the employee
         if (employeeUserId) {
           try {
             await createOffboardingNotification(
               employeeUserId,
               'processed',
-              employeeName,
-              data.offboarding_type
+              { employeeName, offboardingType: data.offboarding_type },
+              { actionUrl: '/ops/offboarding' }
             );
           } catch (notifError) {
             console.error("Failed to send offboarding notification:", notifError);
@@ -223,14 +235,13 @@ export function useOffboarding() {
         if (employeeData.email) {
           try {
             await sendNotificationEmailAction({
-              to: employeeData.email,
-              subject: `Offboarding Notice - ${data.offboarding_type}`,
-              previewText: `Your employment status has been updated`,
-              heading: "Employment Status Update",
-              mainContent: `Dear ${employeeName},\n\nThis is to inform you that your employment status has been updated to "${data.offboarding_type}" as of ${new Date(data.offboarding_date).toLocaleDateString()}.\n\nReason: ${data.reason}${data.notes ? `\n\nAdditional Notes: ${data.notes}` : ""}\n\nPlease contact HR if you have any questions.`,
-              ctaText: "View Details",
-              ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/offboarding`,
-              footerText: "This is a mandatory employment notification.",
+              recipientEmail: employeeData.email,
+              recipientName: employeeName,
+              title: `Offboarding Notice - ${data.offboarding_type}`,
+              message: `Dear ${employeeName},\n\nThis is to inform you that your employment status has been updated to "${data.offboarding_type}" as of ${new Date(data.offboarding_date).toLocaleDateString()}.\n\nReason: ${data.reason}${data.notes ? `\n\nAdditional Notes: ${data.notes}` : ""}\n\nPlease contact HR if you have any questions.`,
+              priority: 'high',
+              actionUrl: `/ops/offboarding`,
+              context: 'offboarding',
               skipPreferenceCheck: true,
             });
           } catch (emailError) {
@@ -274,7 +285,8 @@ export function useOffboarding() {
         if (fetchError) throw fetchError;
 
         const employeeName = `${employeeData.first_name} ${employeeData.last_name}`;
-        const employeeUserId = employeeData.users?.id;
+        const users = employeeData.users as any;
+        const employeeUserId = Array.isArray(users) ? users[0]?.id : users?.id;
 
         const { error: updateError } = await supabase
           .from("employees")
@@ -291,7 +303,8 @@ export function useOffboarding() {
             await createOffboardingNotification(
               employeeUserId,
               'reactivated',
-              employeeName
+              { employeeName },
+              { actionUrl: '/home' }
             );
           } catch (notifError) {
             console.error("Failed to send reactivation notification:", notifError);
@@ -302,14 +315,13 @@ export function useOffboarding() {
         if (employeeData.email) {
           try {
             await sendNotificationEmailAction({
-              to: employeeData.email,
-              subject: "Employment Reactivated",
-              previewText: "Your employment has been reactivated",
-              heading: "Welcome Back!",
-              mainContent: `Dear ${employeeName},\n\nWe are pleased to inform you that your employment has been reactivated. Your status has been restored to Active.\n\nPlease contact HR if you have any questions or need assistance getting started again.`,
-              ctaText: "Go to Dashboard",
-              ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/home`,
-              footerText: "This is a mandatory employment notification.",
+              recipientEmail: employeeData.email,
+              recipientName: employeeName,
+              title: "Employment Reactivated",
+              message: `Dear ${employeeName},\n\nWe are pleased to inform you that your employment has been reactivated. Your status has been restored to Active.\n\nPlease contact HR if you have any questions or need assistance getting started again.`,
+              priority: 'normal',
+              actionUrl: `/home`,
+              context: 'offboarding',
               skipPreferenceCheck: true,
             });
           } catch (emailError) {

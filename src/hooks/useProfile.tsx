@@ -273,7 +273,7 @@ export function useProfile() {
       if (error && error.code === 'PGRST116') {
         const { data: insertResult, error: insertError } = await supabase
           .from('personal_infos')
-          .insert({ id: employeeInfo.id, ...cleanData })
+          .insert({ id: employeeInfo.id, company_id: employeeInfo.company_id, ...cleanData })
           .select()
           .single();
           
@@ -355,12 +355,24 @@ export function useProfile() {
 
   // Education CRUD operations
   const createEducation = useCallback(async (educationData: Omit<Education, "id">) => {
+    if (!employeeInfo) {
+      console.warn('Cannot create education: Employee info not available');
+      return null;
+    }
+
     setLoading(true);
     setError(null);
     try {
+      // Ensure employee_id and company_id are set
+      const dataWithEmployeeId = {
+        ...educationData,
+        employee_id: educationData.employee_id || employeeInfo.id,
+        company_id: employeeInfo.company_id,
+      };
+
       const { data, error } = await supabase
         .from('schoolings')
-        .insert([educationData])
+        .insert([dataWithEmployeeId])
         .select()
         .single();
 
@@ -377,7 +389,7 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [employeeInfo]);
 
   const updateEducation = useCallback(async (id: number, educationData: Partial<Education>) => {
     setLoading(true);
@@ -431,12 +443,24 @@ export function useProfile() {
 
   // Experience CRUD operations
   const createExperience = useCallback(async (experienceData: Omit<Experience, "id">) => {
+    if (!employeeInfo) {
+      console.warn('Cannot create experience: Employee info not available');
+      return null;
+    }
+
     setLoading(true);
     setError(null);
     try {
+      // Ensure employee_id and company_id are set
+      const dataWithEmployeeId = {
+        ...experienceData,
+        employee_id: experienceData.employee_id || employeeInfo.id,
+        company_id: employeeInfo.company_id,
+      };
+
       const { data, error } = await supabase
         .from('experiences')
-        .insert([experienceData])
+        .insert([dataWithEmployeeId])
         .select()
         .single();
 
@@ -453,7 +477,7 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [employeeInfo]);
 
   const updateExperience = useCallback(async (id: number, experienceData: Partial<Experience>) => {
     setLoading(true);

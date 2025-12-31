@@ -137,22 +137,27 @@ export default function AttendanceRequestsPage() {
         // Get the employee's user_id for notification
         const { data: empData } = await supabase
           .from("employees")
-          .select("users!inner(id)")
+          .select("users(id)")
           .eq("id", selectedRequest.employee_id)
           .single();
 
-        if (empData?.users && Array.isArray(empData.users) && empData.users[0]?.id) {
-          await createAttendanceRequestNotification(
-            empData.users[0].id,
-            notificationType,
-            {
-              requestType,
-              date: formatDateToDayMonth(selectedRequest.attendance_record.attendance_date),
-            },
-            {
-              actionUrl: '/ops/attendance',
-            }
-          );
+        if (empData?.users) {
+          const users = empData.users as any;
+          const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+          
+          if (userId) {
+            await createAttendanceRequestNotification(
+              userId,
+              notificationType,
+              {
+                requestType,
+                date: formatDateToDayMonth(selectedRequest.attendance_record.attendance_date),
+              },
+              {
+                actionUrl: '/ops/attendance',
+              }
+            );
+          }
         }
       } catch (notifError) {
         console.error("Failed to send notification:", notifError);

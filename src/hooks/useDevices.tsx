@@ -151,7 +151,10 @@ export function useDevices() {
       if (updateError) throw updateError;
 
       // Send notification only for rejection (per user preference - no email)
-      if (status === 'rejected' && employeeData?.users?.id) {
+      const users = employeeData?.users as any;
+      const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+      
+      if (status === 'rejected' && userId) {
         try {
           // Parse device info for notification
           let deviceName = 'Unknown Device';
@@ -165,10 +168,10 @@ export function useDevices() {
           }
           
           await createDeviceNotification(
-            employeeData.users.id,
+            userId,
             'rejected',
-            deviceName,
-            reason
+            { deviceInfo: deviceName, reason },
+            { actionUrl: '/settings/devices' }
           );
         } catch (notifError) {
           console.error("Failed to send device rejection notification:", notifError);

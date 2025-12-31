@@ -7,7 +7,7 @@ import { Payroll, PayrollAdjustment, PayrollAccountEntry } from "@/lib/types/sch
 import { createPayrollNotification } from "@/lib/utils/notifications";
 import { formatDate } from "@/lib/utils";
 import { createAccountFromPayroll, markPayrollAccountComplete } from "@/lib/utils/payroll-accounts";
-import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 import { checkUserEmailPreference } from "./useEmailPreferences";
 
 export function usePayroll() {
@@ -210,18 +210,20 @@ export function usePayroll() {
                 .eq("id", payroll.employee_id)
                 .single();
 
-              if (empData?.email && empData.users?.id) {
-                const canSendEmail = await checkUserEmailPreference(empData.users.id, 'payroll_paid');
+              const users = empData?.users as any;
+              const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+              
+              if (empData?.email && userId) {
+                const canSendEmail = await checkUserEmailPreference(userId, 'payroll_paid');
                 if (canSendEmail) {
                   await sendNotificationEmailAction({
-                    to: empData.email,
-                    subject: "Payroll Payment Processed",
-                    previewText: `Your salary of ${payroll.total_amount} has been processed`,
-                    heading: "Salary Payment Notification",
-                    mainContent: `Dear ${employeeName},\n\nWe are pleased to inform you that your salary for the period ${formatDate(payroll.generation_date)} has been processed.\n\nAmount: ${payroll.total_amount}\n\nPlease check your bank account for the credited amount. If you have any questions regarding your salary, please contact HR.`,
-                    ctaText: "View Payslip",
-                    ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/payroll`,
-                    footerText: "You received this because your salary has been processed.",
+                    recipientEmail: empData.email,
+                    recipientName: employeeName,
+                    title: "Payroll Payment Processed",
+                    message: `Dear ${employeeName},\n\nWe are pleased to inform you that your salary for the period ${formatDate(payroll.generation_date)} has been processed.\n\nAmount: ${payroll.total_amount}\n\nPlease check your bank account for the credited amount. If you have any questions regarding your salary, please contact HR.`,
+                    priority: 'normal',
+                    actionUrl: `/ops/payroll`,
+                    context: 'payroll',
                   });
                 }
               }
@@ -355,7 +357,8 @@ export function usePayroll() {
 
         const companyId = await getCompanyId();
         
-        // 1. Get all employees for this company with their basic_salary
+        // 1. Get all active employees for this company with their basic_salary
+        // Excludes offboarded employees (Resigned/Terminated)
         const { data: employees, error: empErr } = await supabase
           .from("employees")
           .select(`
@@ -368,6 +371,7 @@ export function usePayroll() {
           `)
           .eq("company_id", companyId)
           .eq("has_approval", "ACCEPTED")
+          .in("job_status", ['Active', 'Probation'])
           .gt("basic_salary", 0); // Only employees with salary > 0
 
         if (empErr) {

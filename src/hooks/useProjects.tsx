@@ -10,7 +10,7 @@ import { ProjectDetails } from "@/components/ops/project/ProjectForm";
 import { slugify } from "@/lib/utils";
 import { set } from "lodash";
 import { captureSupabaseError } from "@/lib/sentry";
-import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 import { checkUserEmailPreference } from "./useEmailPreferences";
 
 export type { Project };
@@ -353,28 +353,32 @@ export function useProjects() {
         // Send completion emails to all recipients who have email preferences enabled
         try {
           // Fetch employee details for all recipients
-          const { data: recipientEmployees } = await supabase
-            .from("employees")
-            .select("id, first_name, last_name, email, users!inner(id)")
-            .in("id", recipients);
+          for (const recipientId of recipients) {
+            const { data: employee } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name, email, users(id)")
+              .eq("id", recipientId)
+              .single();
 
-          if (recipientEmployees) {
-            for (const emp of recipientEmployees) {
-              if (emp.email && emp.users?.id) {
-                // Check email preference
-                const canSendEmail = await checkUserEmailPreference(emp.users.id, 'project_completion');
-                if (canSendEmail) {
-                  await sendNotificationEmailAction({
-                    to: emp.email,
-                    subject: `Project Completed: ${project.project_title}`,
-                    previewText: `The project "${project.project_title}" has been completed`,
-                    heading: "Project Completion Notice",
-                    mainContent: `Dear ${emp.first_name} ${emp.last_name},\n\nWe are pleased to inform you that the project "${project.project_title}" has been marked as completed.\n\nThank you for your contribution to this project.`,
-                    ctaText: "View Project",
-                    ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/project`,
-                    footerText: "You received this because you are involved in this project.",
-                  });
-                }
+            if (!employee?.email) continue;
+
+            // Handle users as array (Supabase returns it as array type)
+            const users = employee.users as any;
+            const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+
+            if (userId) {
+              // Check email preference
+              const canSendEmail = await checkUserEmailPreference(userId, 'project_completion');
+              if (canSendEmail) {
+                await sendNotificationEmailAction({
+                  recipientEmail: employee.email,
+                  recipientName: `${employee.first_name} ${employee.last_name}`,
+                  title: `Project Completed: ${project.project_title}`,
+                  message: `We are pleased to inform you that the project "${project.project_title}" has been marked as completed.\n\nThank you for your contribution to this project.`,
+                  priority: 'normal',
+                  actionUrl: `/ops/project`,
+                  context: 'project',
+                });
               }
             }
           }

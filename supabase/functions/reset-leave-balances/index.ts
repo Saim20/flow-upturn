@@ -24,11 +24,12 @@ serve(async (req) => {
         .eq("company_id", companyId);
       if (leaveTypesError) throw leaveTypesError;
 
-      // 3. Fetch all employees of this company
+      // 3. Fetch all active employees of this company (exclude offboarded)
       const { data: employees, error: employeesError } = await supabase
         .from("employees")
         .select("id")
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .in("job_status", ['Active', 'Probation']);
       if (employeesError) throw employeesError;
 
       // 4. Loop through each employee and leave type

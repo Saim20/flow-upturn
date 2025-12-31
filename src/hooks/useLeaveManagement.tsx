@@ -9,7 +9,7 @@ import { useNotifications } from "./useNotifications";
 import { HolidayConfig, LeaveType } from "@/lib/types";
 import { usePermissions } from "./usePermissions";
 import { captureSupabaseError } from "@/lib/sentry";
-import { sendNotificationEmailAction } from "@/app/actions/send-notification-email";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 import { checkUserEmailPreference } from "./useEmailPreferences";
 import { createLeaveRequestNotification } from "@/lib/utils/notifications";
 
@@ -156,10 +156,13 @@ export function useLeaveRequests() {
         await reduceBalance(employeeId, leaveTypeId, diffInDays);
 
         // Send approval notification
-        if (empData?.users?.id) {
+        const users = empData?.users as any;
+        const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+        
+        if (userId) {
           try {
             await createLeaveRequestNotification(
-              empData.users.id,
+              userId,
               'approved',
               {
                 leaveType: leaveTypeName,
@@ -177,19 +180,18 @@ export function useLeaveRequests() {
         }
 
         // Send approval email
-        if (empData?.email && empData?.users?.id) {
+        if (empData?.email && userId) {
           try {
-            const canSendEmail = await checkUserEmailPreference(empData.users.id, 'leave_approval');
+            const canSendEmail = await checkUserEmailPreference(userId, 'leave_approval');
             if (canSendEmail) {
               await sendNotificationEmailAction({
-                to: empData.email,
-                subject: `Leave Request Approved: ${leaveTypeName}`,
-                previewText: `Your ${leaveTypeName.toLowerCase()} leave request has been approved`,
-                heading: "Leave Request Approved",
-                mainContent: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} has been approved.\n\nEnjoy your time off!`,
-                ctaText: "View Leave",
-                ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/leave`,
-                footerText: "You received this because your leave request was approved.",
+                recipientEmail: empData.email,
+                recipientName: employeeName,
+                title: `Leave Request Approved: ${leaveTypeName}`,
+                message: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} has been approved.\n\nEnjoy your time off!`,
+                priority: 'normal',
+                actionUrl: `/ops/leave`,
+                context: 'leave',
               });
             }
           } catch (emailError) {
@@ -198,10 +200,13 @@ export function useLeaveRequests() {
         }
       } else if (leaveData.status === "Rejected") {
         // Send rejection notification
-        if (empData?.users?.id) {
+        const users = empData?.users as any;
+        const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+        
+        if (userId) {
           try {
             await createLeaveRequestNotification(
-              empData.users.id,
+              userId,
               'rejected',
               {
                 leaveType: leaveTypeName,
@@ -218,19 +223,18 @@ export function useLeaveRequests() {
         }
 
         // Send rejection email
-        if (empData?.email && empData?.users?.id) {
+        if (empData?.email && userId) {
           try {
-            const canSendEmail = await checkUserEmailPreference(empData.users.id, 'leave_rejection');
+            const canSendEmail = await checkUserEmailPreference(userId, 'leave_rejection');
             if (canSendEmail) {
               await sendNotificationEmailAction({
-                to: empData.email,
-                subject: `Leave Request Not Approved: ${leaveTypeName}`,
-                previewText: `Your ${leaveTypeName.toLowerCase()} leave request was not approved`,
-                heading: "Leave Request Update",
-                mainContent: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} was not approved.\n\n${leaveData.remarks ? `Reason: ${leaveData.remarks}` : ""}\n\nPlease contact your supervisor if you have any questions.`,
-                ctaText: "View Leave",
-                ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://flow.sajilohris.com"}/ops/leave`,
-                footerText: "You received this because your leave request was updated.",
+                recipientEmail: empData.email,
+                recipientName: employeeName,
+                title: `Leave Request Not Approved: ${leaveTypeName}`,
+                message: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} was not approved.\n\n${leaveData.remarks ? `Reason: ${leaveData.remarks}` : ""}\n\nPlease contact your supervisor if you have any questions.`,
+                priority: 'normal',
+                actionUrl: `/ops/leave`,
+                context: 'leave',
               });
             }
           } catch (emailError) {

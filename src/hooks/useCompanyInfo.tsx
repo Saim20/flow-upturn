@@ -44,24 +44,29 @@ export function useCompanyInfo() {
     setLoading(true);
     setError(null);
     try {
+      const companyId = await getCompanyId();
       // Fetch all data in parallel
       const [companyResult, countriesResult, industriesResult, employeesResult] = await Promise.all([
         getCompanyInfoApi(),
         supabase.from('countries').select('id, name').order('name'),
         supabase.from('industries').select('id, name').order('name'),
-        supabase.from('employees').select('id, first_name, last_name, email, designation, department_id(name)').eq('company_id', (await getCompanyId())).then(res => {
-          if (res.error) {
-            console.error('Failed to fetch employees:', res.error);
-            return [];
-          }
-          return (res.data || []).map(emp => ({
-            id: emp.id,
-            name: `${emp.first_name} ${emp.last_name}`,
-            email: emp.email,
-            designation: emp.designation || undefined,
-            department: (emp.department_id as unknown as { name: string })?.name || undefined
-          }));
-        })
+        supabase.from('employees')
+          .select('id, first_name, last_name, email, designation, department_id(name)')
+          .eq('company_id', companyId)
+          .in('job_status', ['Active', 'Probation']) // Only active employees
+          .then(res => {
+            if (res.error) {
+              console.error('Failed to fetch employees:', res.error);
+              return [];
+            }
+            return (res.data || []).map(emp => ({
+              id: emp.id,
+              name: `${emp.first_name} ${emp.last_name}`,
+              email: emp.email,
+              designation: emp.designation || undefined,
+              department: (emp.department_id as unknown as { name: string })?.name || undefined
+            }));
+          })
       ]);
 
       setCompanyInfo(companyResult);

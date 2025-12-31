@@ -70,16 +70,30 @@ export default function RequisitionPage() {
   // Load requisition types, inventories, and requests/history
   useEffect(() => {
     const load = async () => {
+      if (!employeeInfo?.company_id) return;
+      
       if (activeTab === "requests") await fetchRequisitionRequests("Pending", true);
       else await fetchRequisitionHistory(true);
 
-      const { data: types } = await supabase.from("requisition_types").select("*");
+      // Filter by company_id for data isolation
+      const { data: types } = await supabase
+        .from("requisition_types")
+        .select("*")
+        .eq("company_id", employeeInfo.company_id);
       setRequisitionTypes(types || []);
 
-      const { data: inventories } = await supabase.from("requisition_inventories").select("*");
+      const { data: inventories } = await supabase
+        .from("requisition_inventories")
+        .select("*")
+        .eq("company_id", employeeInfo.company_id);
       setRequisitionInventories(inventories || []);
 
-      const { data: emps } = await supabase.from("employees").select("id, first_name, last_name, email, designation");
+      // Filter employees by company_id and active job status
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name, email, designation")
+        .eq("company_id", employeeInfo.company_id)
+        .in("job_status", ['Active', 'Probation']);
       // Format employees to include name field for RequisitionCard
       const formattedEmployees = (emps || []).map((emp: any) => ({
         ...emp,
@@ -88,7 +102,7 @@ export default function RequisitionPage() {
       setEmployees(formattedEmployees);
     };
     load();
-  }, [activeTab]);
+  }, [activeTab, employeeInfo?.company_id]);
 
   // FunnelSimple requisitions (optional searchTerm can be added here)
   useEffect(() => {

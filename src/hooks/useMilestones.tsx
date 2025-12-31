@@ -50,13 +50,31 @@ export function useMilestones() {
             .eq("id", id)
             .single();
 
-          if (milestoneData?.project_records?.employees?.users?.id) {
-            await createMilestoneNotification(
-              milestoneData.project_records.employees.users.id,
-              milestoneData.name || "Milestone",
-              milestoneData.project_records.name || "Project",
-              'completed'
-            );
+          if (milestoneData?.project_records) {
+            const projectRecord = Array.isArray(milestoneData.project_records) 
+              ? milestoneData.project_records[0] 
+              : milestoneData.project_records;
+            
+            if (projectRecord?.employees) {
+              const employee = Array.isArray(projectRecord.employees) 
+                ? projectRecord.employees[0] 
+                : projectRecord.employees;
+              
+              const users = employee?.users as any;
+              const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+              
+              if (userId) {
+                await createMilestoneNotification(
+                  userId,
+                  'completed',
+                  { 
+                    milestoneName: milestoneData.name || "Milestone",
+                    projectName: projectRecord.name || "Project"
+                  },
+                  { actionUrl: '/ops/milestones' }
+                );
+              }
+            }
           }
         } catch (notifError) {
           console.error("Failed to send milestone completion notification:", notifError);

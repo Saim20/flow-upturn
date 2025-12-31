@@ -111,6 +111,12 @@ export const JOB_STATUS = {
 
 export type JobStatus = typeof JOB_STATUS[keyof typeof JOB_STATUS];
 
+// Active employee statuses (for filtering out offboarded employees)
+export const ACTIVE_STATUSES = [JOB_STATUS.ACTIVE, JOB_STATUS.PROBATION] as const;
+
+// Offboarded employee statuses
+export const OFFBOARDED_STATUSES = [JOB_STATUS.RESIGNED, JOB_STATUS.TERMINATED] as const;
+
 // ==============================================================================
 // Education/Schooling Type Constants
 // ==============================================================================

@@ -184,6 +184,7 @@ export default function TeamDetailPage() {
         .from("employees")
         .select("id, first_name, last_name, email, designation")
         .eq("company_id", companyId)
+        .in("job_status", ['Active', 'Probation']) // Only active employees can be assigned to teams
         .order("first_name");
 
       if (error) throw error;

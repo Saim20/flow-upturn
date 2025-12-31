@@ -607,22 +607,27 @@ export function useStakeholderIssues() {
                 // Get KAM employee details
                 const { data: kamEmployee } = await supabase
                   .from("employees")
-                  .select("first_name, last_name, email, users!inner(id)")
+                  .select("first_name, last_name, email, users(id)")
                   .eq("id", stakeholderData.kam_id)
                   .single();
 
-                if (kamEmployee?.email && kamEmployee.users && Array.isArray(kamEmployee.users) && kamEmployee.users[0]?.id) {
-                  const canSendEmail = await checkUserEmailPreference(kamEmployee.users[0].id, 'stakeholder_issue_high_priority');
-                  if (canSendEmail) {
-                    await sendNotificationEmailAction({
-                      recipientEmail: kamEmployee.email,
-                      recipientName: `${kamEmployee.first_name} ${kamEmployee.last_name}`,
-                      title: `${issueData.priority} Priority Issue: ${issueData.title}`,
-                      message: `A ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
-                      priority: issueData.priority === 'Urgent' ? 'urgent' : 'high',
-                      actionUrl: `/stakeholder-issues/${data.id}`,
-                      context: 'stakeholder_issue',
-                    });
+                if (kamEmployee?.email) {
+                  const users = kamEmployee.users as any;
+                  const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+                  
+                  if (userId) {
+                    const canSendEmail = await checkUserEmailPreference(userId, 'stakeholder_issue_high_priority');
+                    if (canSendEmail) {
+                      await sendNotificationEmailAction({
+                        recipientEmail: kamEmployee.email,
+                        recipientName: `${kamEmployee.first_name} ${kamEmployee.last_name}`,
+                        title: `${issueData.priority} Priority Issue: ${issueData.title}`,
+                        message: `A ${issueData.priority.toLowerCase()} priority issue has been created for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
+                        priority: issueData.priority === 'Urgent' ? 'urgent' : 'high',
+                        actionUrl: `/stakeholder-issues/${data.id}`,
+                        context: 'stakeholder_issue',
+                      });
+                    }
                   }
                 }
               } catch (emailError) {
@@ -651,22 +656,27 @@ export function useStakeholderIssues() {
               try {
                 const { data: assignedEmployee } = await supabase
                   .from("employees")
-                  .select("first_name, last_name, email, users!inner(id)")
+                  .select("first_name, last_name, email, users(id)")
                   .eq("id", issueData.assigned_to)
                   .single();
 
-                if (assignedEmployee?.email && assignedEmployee.users && Array.isArray(assignedEmployee.users) && assignedEmployee.users[0]?.id) {
-                  const canSendEmail = await checkUserEmailPreference(assignedEmployee.users[0].id, 'stakeholder_issue_high_priority');
-                  if (canSendEmail) {
-                    await sendNotificationEmailAction({
-                      recipientEmail: assignedEmployee.email,
-                      recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
-                      title: `${issueData.priority} Priority Issue Assigned: ${issueData.title}`,
-                      message: `A ${issueData.priority.toLowerCase()} priority issue has been assigned to you for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
-                      priority: issueData.priority === 'Urgent' ? 'urgent' : 'high',
-                      actionUrl: `/stakeholder-issues/${data.id}`,
-                      context: 'stakeholder_issue',
-                    });
+                if (assignedEmployee?.email) {
+                  const users = assignedEmployee.users as any;
+                  const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+                  
+                  if (userId) {
+                    const canSendEmail = await checkUserEmailPreference(userId, 'stakeholder_issue_high_priority');
+                    if (canSendEmail) {
+                      await sendNotificationEmailAction({
+                        recipientEmail: assignedEmployee.email,
+                        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+                        title: `${issueData.priority} Priority Issue Assigned: ${issueData.title}`,
+                        message: `A ${issueData.priority.toLowerCase()} priority issue has been assigned to you for ${stakeholderData.name}.\n\nTitle: ${issueData.title}\n${issueData.description ? `Description: ${issueData.description}\n` : ""}\nThis requires your immediate attention.`,
+                        priority: issueData.priority === 'Urgent' ? 'urgent' : 'high',
+                        actionUrl: `/stakeholder-issues/${data.id}`,
+                        context: 'stakeholder_issue',
+                      });
+                    }
                   }
                 }
               } catch (emailError) {
