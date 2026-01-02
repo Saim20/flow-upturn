@@ -175,8 +175,8 @@ export default function TaskCreateModal({
         />
 
         {milestoneId && (
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-            <p className="text-sm text-primary-800">
+          <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4">
+            <p className="text-sm text-foreground-primary">
               <strong>Note:</strong> This task will be associated with milestone: <span className="font-semibold">{milestoneTitle || `ID ${milestoneId}`}</span>
             </p>
           </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Pencil, TrashSimple, Plus, Target, Users, ArrowUpRight, CaretLeft } from "@phosphor-icons/react";
+import { Calendar, Pencil, TrashSimple, Plus, Target, Users, ArrowUpRight, CaretLeft, Clock, CheckCircle, Circle, Tag, User } from "@phosphor-icons/react";
 import { Employee } from "@/lib/types/schemas";
 import { Milestone } from "@/hooks/useMilestones";
 import { Task, useTasks } from "@/hooks/useTasks";
@@ -146,6 +146,55 @@ export default function MilestoneDetails({
   const handleDisplayUpdateTaskModal = (id: string) => {
     const selectedTask = tasks.find((task: Task) => task.id === id);
     if (selectedTask) setSelectedTask(selectedTask);
+  };
+
+  // Helper functions for task display
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case 'urgent':
+        return 'bg-error/10 dark:bg-error/20 text-error border-error/30';
+      case 'high':
+        return 'bg-warning/10 dark:bg-warning/20 text-warning border-warning/30';
+      case 'normal':
+      case 'medium':
+        return 'bg-info/10 dark:bg-info/20 text-info border-info/30';
+      case 'low':
+        return 'bg-success/10 dark:bg-success/20 text-success border-success/30';
+      default:
+        return 'bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary';
+    }
+  };
+
+  const formatDueDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return null;
+    try {
+      const date = new Date(dateStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDate = new Date(dateStr);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) {
+        return { text: `${Math.abs(diffDays)}d overdue`, isOverdue: true };
+      } else if (diffDays === 0) {
+        return { text: 'Due today', isToday: true };
+      } else if (diffDays === 1) {
+        return { text: 'Due tomorrow', isUrgent: true };
+      } else if (diffDays <= 3) {
+        return { text: `${diffDays}d left`, isUrgent: true };
+      } else {
+        return { text: `${diffDays}d left`, isNormal: true };
+      }
+    } catch {
+      return null;
+    }
+  };
+
+  const getAssigneeCount = (assignees: string[] | null | undefined) => {
+    return assignees ? assignees.length : 0;
   };
 
   async function fetchMilestoneDetails(id: number) {
@@ -355,56 +404,127 @@ export default function MilestoneDetails({
               )}
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {!loadingTasks && tasks.length > 0 ? (
-                tasks.map((task) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ y: -2 }}
-                    className="bg-surface-primary rounded-lg border border-border-primary p-4 shadow-sm space-y-3"
-                  >
-                    <div className="font-medium text-foreground-primary">
-                      {task.task_title}
-                    </div>
-                    <div className="flex justify-end items-center gap-2">
-                      {canWriteTasks && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          aria-label="Edit task"
-                          onClick={() => task.id !== null && handleDisplayUpdateTaskModal(task.id!)}
-                          className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150"
-                        >
-                          <Pencil size={15} weight="regular" />
-                        </motion.button>
-                      )}
-                      
-                      {canDeleteTasks && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          aria-label="Delete task"
-                          onClick={() => task.id !== null && handleDeleteTask(task.id!)}
-                          className="p-1.5 text-foreground-secondary hover:text-error hover:bg-error/10 dark:hover:bg-error/20 rounded-full transition-colors duration-150"
-                        >
-                          <TrashSimple size={15} weight="regular" />
-                        </motion.button>
-                      )}
+                tasks.map((task) => {
+                  const dueInfo = formatDueDate(task.expected_date);
+                  const assigneeCount = getAssigneeCount(task.assignees);
+                  const isCompleted = task.status === true || (typeof task.status === 'string' && task.status.toLowerCase() === 'completed');
+                  
+                  return (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      whileHover={{ y: -2 }}
+                      className="bg-surface-primary rounded-lg border border-border-primary p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    >
+                      {/* Header with title and status */}
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            {isCompleted && (
+                              <CheckCircle
+                                size={18}
+                                weight="fill"
+                                className="text-success shrink-0"
+                              />
+                            )}
+                            <h4 className={`font-medium text-foreground-primary truncate ${isCompleted ? 'line-through opacity-70' : ''}`}>
+                              {task.task_title}
+                            </h4>
+                          </div>
+                          
+                          {task.description && (
+                            <p className="text-sm text-foreground-secondary line-clamp-2">
+                              {task.description}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-1 shrink-0">
+                          {canWriteTasks && (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              aria-label={`Edit task ${task.task_title}`}
+                              onClick={() => task.id !== null && handleDisplayUpdateTaskModal(task.id!)}
+                              className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150"
+                            >
+                              <Pencil size={15} weight="regular" />
+                            </motion.button>
+                          )}
+                          
+                          {canDeleteTasks && (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              aria-label={`Delete task ${task.task_title}`}
+                              onClick={() => task.id !== null && handleDeleteTask(task.id!)}
+                              className="p-1.5 text-foreground-secondary hover:text-error hover:bg-error/10 dark:hover:bg-error/20 rounded-full transition-colors duration-150"
+                            >
+                              <TrashSimple size={15} weight="regular" />
+                            </motion.button>
+                          )}
 
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        aria-label="View task details"
-                        onClick={() => task.id !== null && setTaskDetailsId(task.id!)}
-                        className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150 ml-2"
-                      >
-                        <ArrowUpRight size={15} weight="regular" />
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                ))
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            aria-label={`View task ${task.task_title}`}
+                            onClick={() => task.id !== null && setTaskDetailsId(task.id!)}
+                            className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150"
+                          >
+                            <ArrowUpRight size={15} weight="regular" />
+                          </motion.button>
+                        </div>
+                      </div>
+
+                      {/* Task metadata */}
+                      <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border-secondary">
+                        {/* Priority badge */}
+                        {task.priority && (
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+                            <Tag size={14} weight="fill" />
+                            <span className="capitalize">{task.priority}</span>
+                          </div>
+                        )}
+                        
+                        {/* Status badge */}
+                        {task.status && (
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                            isCompleted 
+                              ? 'bg-success/10 dark:bg-success/20 text-success border-success/30' 
+                              : 'bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary'
+                          }`}>
+                            <span className="capitalize">{task.status ? "Complete" : "Pending"}</span>
+                          </div>
+                        )}
+                        
+                        {/* Due date */}
+                        {dueInfo && (
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                            dueInfo.isOverdue 
+                              ? 'bg-error/10 dark:bg-error/20 text-error border-error/30'
+                              : dueInfo.isToday || dueInfo.isUrgent
+                              ? 'bg-warning/10 dark:bg-warning/20 text-warning border-warning/30'
+                              : 'bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary'
+                          }`}>
+                            <Clock size={14} weight="bold" />
+                            <span>{dueInfo.text}</span>
+                          </div>
+                        )}
+                        
+                        {/* Assignee count */}
+                        {assigneeCount > 0 && (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary">
+                            <User size={14} weight="fill" />
+                            <span>{assigneeCount} {assigneeCount === 1 ? 'assignee' : 'assignees'}</span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })
               ) : loadingTasks ? (
                 <div className="col-span-3 flex items-center justify-center h-32">
                   <LoadingSpinner />
