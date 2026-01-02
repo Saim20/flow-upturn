@@ -68,6 +68,7 @@ export default function ProjectCard({
           variant="ghost"
           size="sm"
           onClick={onEdit}
+          aria-label="Edit project"
           className="p-2 h-8 w-8 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600"
         >
           <PencilSimple size={14} />
@@ -81,6 +82,7 @@ export default function ProjectCard({
           size="sm"
           onClick={onDelete}
           isLoading={isDeleting}
+          aria-label="Delete project"
           className="p-2 h-8 w-8 hover:bg-error/10 dark:hover:bg-error/20 hover:text-error"
         >
           <TrashSimple size={14} />
@@ -92,6 +94,7 @@ export default function ProjectCard({
             data-testid="view-project-button"
             variant="ghost"
             size="sm"
+            aria-label="View project details"
             className="p-2 h-8 w-8 hover:bg-surface-hover hover:text-foreground-primary"
           >
             <ArrowSquareOut size={14} />
@@ -134,7 +137,7 @@ export default function ProjectCard({
             label="Progress"
             value={
               <StatusBadge
-                status={typeof progress === "number" ? `${progress}%` : progress || "N/A"}
+                status={typeof progress === "number" ? `${progress}%` : "0%"}
                 variant={getProgressVariant(progress || 0)}
               />
             }

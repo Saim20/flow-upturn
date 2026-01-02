@@ -13,6 +13,7 @@ interface MilestoneListItemProps {
   setSelectedMilestone: (milestone: Milestone) => void;
   setMilestoneDetailsId: (id: number) => void;
   index?: number;
+  canWriteMilestones?: boolean;
 }
 
 const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
@@ -22,6 +23,7 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
   setSelectedMilestone,
   setMilestoneDetailsId,
   index,
+  canWriteMilestones = false,
 }) => {
   return (
     <motion.div
@@ -35,7 +37,7 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
           <h4 className="font-semibold text-foreground-primary">
             {milestone.milestone_title}
           </h4>
-          <span className="text-xs font-medium bg-blue-100 px-2 py-1 rounded-full text-blue-600">
+          <span className="text-xs font-medium bg-primary-100 dark:bg-primary-900/30 px-2 py-1 rounded-full text-primary-600 dark:text-primary-300">
             {milestone.weightage}%
           </span>
 
@@ -57,10 +59,11 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {milestone.status === "Not Started" && (
+          {canWriteMilestones && milestone.status === "Not Started" && (
             <Button
               variant="pending"
               size="sm"
+              aria-label="Mark milestone as in progress"
               onClick={() =>
                 milestone.id &&
                 onMilestoneStatusUpdate(milestone.id, {
@@ -73,10 +76,11 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
             </Button>
           )}
 
-          {milestone.status === "In Progress" && (
+          {canWriteMilestones && milestone.status === "In Progress" && (
             <Button
               variant="complete"
               size="sm"
+              aria-label="Mark milestone as complete"
               onClick={() =>
                 milestone.id &&
                 onMilestoneStatusUpdate(milestone.id, {
@@ -91,16 +95,20 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
 
           {projectDetails.status !== "Completed" && (
             <div className="flex gap-1">
+              {canWriteMilestones && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Edit milestone"
+                  onClick={() => setSelectedMilestone(milestone)}
+                >
+                  <Pencil size={14} />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedMilestone(milestone)}
-              >
-                <Pencil size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
+                aria-label="View milestone details"
                 onClick={() =>
                   milestone.id && setMilestoneDetailsId(milestone.id)
                 }

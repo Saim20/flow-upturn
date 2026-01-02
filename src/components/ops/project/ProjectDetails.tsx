@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useMilestones } from "@/hooks/useMilestones";
 import { useComments } from "@/hooks/useComments";
 import MilestoneDetails from "./milestone/MilestoneDetails";
@@ -31,6 +31,9 @@ import { MilestoneUpdateModal } from "./milestone";
 import MilestoneListItem from "./milestone/MilestoneListItem";
 import { useProjects } from "@/hooks/useProjects";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth/auth-context";
+import { PERMISSION_MODULES } from "@/lib/constants";
+import { captureSupabaseError } from "@/lib/sentry";
 
 interface ProjectDetailsProps {
   id: string;
@@ -91,6 +94,11 @@ export default function ProjectDetails({
 
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const { canWrite, canDelete } = useAuth();
+  const canWriteProjects = canWrite(PERMISSION_MODULES.PROJECTS);
+  const canWriteMilestones = canWrite(PERMISSION_MODULES.MILESTONES);
+  const canDeleteMilestones = canDelete(PERMISSION_MODULES.MILESTONES);
 
   const {updateProject} = useProjects()
 
@@ -170,9 +178,23 @@ export default function ProjectDetails({
     null
   );
 
-  const getTotalMilestoneWeightage = () => {
-    return milestones.reduce((sum, m) => sum + m.weightage, 0);
-  }
+  // Memoized calculations
+  const totalMilestoneWeightage = useMemo(() => {
+    return milestones.reduce((sum, m) => sum + (m.weightage || 0), 0);
+  }, [milestones]);
+
+  const getTotalMilestoneWeightage = useCallback(() => {
+    return totalMilestoneWeightage;
+  }, [totalMilestoneWeightage]);
+
+  // Memoized employee lookup map for faster lookups
+  const employeeMap = useMemo(() => {
+    return new Map(employees.map(emp => [emp.id, emp]));
+  }, [employees]);
+
+  const getEmployeeName = useCallback((id: string) => {
+    return employeeMap.get(id)?.name || "Not assigned";
+  }, [employeeMap]);
 
 
 
@@ -274,14 +296,18 @@ export default function ProjectDetails({
 
       if (error) {
         setError("Error fetching Project details");
-        console.error(error);
+        captureSupabaseError(error, "fetchProjectDetails", { projectId: id, companyId: company_id });
         return;
       }
 
       setProjectDetails(data[0]);
     } catch (error) {
       setError("Error fetching Project details");
-      console.error(error);
+      captureSupabaseError(
+        { message: error instanceof Error ? error.message : String(error) },
+        "fetchProjectDetails",
+        { projectId: id }
+      );
     } finally {
       setLoading(false);
     }
@@ -297,11 +323,12 @@ export default function ProjectDetails({
         .from("milestone_records")
         .select("*")
         .eq("project_id", id)
-        .eq("company_id", company_id);
+        .eq("company_id", company_id)
+        .order("created_at", { ascending: true });
 
       if (error) {
         setError("Error fetching milestones");
-        console.error(error);
+        captureSupabaseError(error, "fetchMilestonesByProjectId", { projectId: id, companyId: company_id });
         return;
       }
 
@@ -318,7 +345,11 @@ export default function ProjectDetails({
       setMilestones(formatData);
     } catch (error) {
       setError("Error fetching milestones");
-      console.error(error);
+      captureSupabaseError(
+        { message: error instanceof Error ? error.message : String(error) },
+        "fetchMilestonesByProjectId",
+        { projectId: id }
+      );
     } finally {
       setLoadingMilestones(false);
     }
@@ -481,7 +512,7 @@ export default function ProjectDetails({
                           return employee ? (
                             <span
                               key={assigneeId}
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200"
                             >
                               {employee.name}
                             </span>
@@ -491,7 +522,7 @@ export default function ProjectDetails({
                     </div>
                   )}
 
-                {projectDetails.status !== "Completed" && (projectDetails.created_by === currentUserId || projectDetails.project_lead_id === currentUserId) && (
+                {projectDetails.status !== "Completed" && canWriteProjects && (projectDetails.created_by === currentUserId || projectDetails.project_lead_id === currentUserId) && (
                   <div className="pt-4 border-t border-border-primary">
                     <Button
                       onClick={() => setDisplaySubmissionModal(true)}
@@ -514,11 +545,13 @@ export default function ProjectDetails({
                 icon={<Target size={20} />}
                 action={
                   projectDetails.status !== "Completed" &&
+                  canWriteMilestones &&
                   milestones.reduce((acc, m) => acc + m.weightage, 0) < 100 && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setIsCreatingMilestone(true)}
+                      aria-label="Add new milestone"
                     >
                       <Plus size={16} className="mr-2" />
                       Add Milestone
@@ -545,6 +578,7 @@ export default function ProjectDetails({
                         setSelectedMilestone={setSelectedMilestone}
                         setMilestoneDetailsId={setMilestoneDetailsId}
                         index={index}
+                        canWriteMilestones={canWriteMilestones}
                       />
                     ))}
 
@@ -555,7 +589,7 @@ export default function ProjectDetails({
                     title="No milestones yet"
                     description="Add milestones to track project progress"
                     action={
-                      projectDetails.status !== "Completed"
+                      projectDetails.status !== "Completed" && canWriteMilestones
                         ? {
                           label: "Add First Milestone",
                           onClick: () => setIsCreatingMilestone(true),

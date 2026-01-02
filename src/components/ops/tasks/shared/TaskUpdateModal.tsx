@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 
 interface TaskUpdateModalProps {
   initialData: TaskData;
+  milestoneTitle?: string;
   onSubmit: (data: TaskData) => void;
   onClose: () => void;
   isLoading?: boolean;
@@ -27,6 +28,7 @@ const statusOptions = [
 
 export default function TaskUpdateModal({
   initialData,
+  milestoneTitle,
   onSubmit,
   onClose,
   isLoading = false
@@ -63,28 +65,29 @@ export default function TaskUpdateModal({
 
   const handleSubmit = async () => {
     setLoading(true);
-    const validation = validateTask(formData);
+    
+    try {
+      const validation = validateTask(formData);
 
-    if (!validation.success && validation.errors) {
-      const errorMap: Record<string, string> = {};
-      validation.errors.forEach(error => {
-        errorMap[error.field] = error.message;
-      });
-      setErrors(errorMap);
-      return;
-    }
+      if (!validation.success && validation.errors) {
+        const errorMap: Record<string, string> = {};
+        validation.errors.forEach(error => {
+          errorMap[error.field] = error.message;
+        });
+        setErrors(errorMap);
+        return;
+      }
 
-    if (validation.success && validation.data) {
-      await onSubmit(validation.data);
+      if (validation.success && validation.data) {
+        await onSubmit(validation.data);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const isFormValid = () => {
     const validation = validateTask(formData);
-    console.log('Validation data:', formData);
-    console.log('Validation errors:', validation.errors);
-
     return validation.success;
   };
 
@@ -163,7 +166,7 @@ export default function TaskUpdateModal({
         {formData.milestone_id && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> This task is associated with milestone ID: {formData.milestone_id}
+              <strong>Note:</strong> This task is associated with milestone: <span className="font-semibold">{milestoneTitle || `ID ${formData.milestone_id}`}</span>
             </p>
           </div>
         )}

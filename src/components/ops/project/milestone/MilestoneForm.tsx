@@ -341,7 +341,8 @@ export default function MilestoneForm({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="button"
-              className="flex items-center px-4 py-2 bg-background-tertiary dark:bg-surface-secondary border border-border-primary rounded-md text-foreground-secondary hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors duration-150 shadow-sm"
+              aria-label="Cancel"
+              className="flex items-center px-4 py-2 bg-background-tertiary dark:bg-surface-secondary border border-border-primary rounded-md text-foreground-secondary hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 transition-colors duration-150 shadow-sm"
               onClick={onCancel}
             >
               <X size={16} className="mr-2" strokeWidth={2} />
@@ -353,8 +354,9 @@ export default function MilestoneForm({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="button"
+              aria-label={mode === "create" ? "Add milestone" : "Update milestone"}
               onClick={handleSubmit}
-              className="flex items-center px-4 py-2 bg-gray-800 rounded-md text-white hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors duration-150 shadow-sm"
+              className="flex items-center px-4 py-2 bg-primary-600 rounded-md text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 transition-colors duration-150 shadow-sm"
             >
               <Check size={16} className="mr-2" strokeWidth={2} />
               {mode === "create" ? "Add Milestone" : "Update Milestone"}

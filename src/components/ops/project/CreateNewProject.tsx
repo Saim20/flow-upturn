@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase/client";
 import { fadeIn, fadeInUp, staggerContainer } from "@/components/ui/animations";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/auth-context";
+import { captureError } from "@/lib/sentry";
 
 const initialMilestone: Milestone = {
   milestone_title: "",
@@ -67,9 +68,7 @@ export default function CreateNewProjectPage({ setActiveTab }: { setActiveTab: (
     setIsSubmitting(true);
 
     try {
-      console.log("Step 1", data)
       const projectResult = await createProject({ ...data });
-      console.log("Step 3", projectResult)
       if (!projectResult || !projectResult.success) {
         throw new Error("Failed to create project");
       }
@@ -112,7 +111,11 @@ export default function CreateNewProjectPage({ setActiveTab }: { setActiveTab: (
       router.push('/ops/project?tab=ongoing');
       setActiveTab('ongoing')
     } catch (error) {
-      console.error("Error creating project:", error);
+      captureError(error, { 
+        operation: "createProject", 
+        projectTitle: data.project_title,
+        milestonesCount: milestones.length 
+      });
       toast.error(
         error instanceof Error ? error.message : "Failed to create project"
       );

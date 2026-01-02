@@ -272,8 +272,8 @@ export function validateTask(data: TaskData): ValidationResult<TaskData> {
   if (endDateError) errors.push(endDateError);
 
   // Validate optional fields
-  if (data.project_id !== undefined && data.project_id !== null) {
-    const projectIdError = validateNumber(data.project_id, 'project_id', { required: true, min: 0 });
+  if (data.project_id !== undefined && data.project_id !== null && data.project_id !== '') {
+    const projectIdError = validateString(data.project_id, 'project_id', { required: false, minLength: 1 });
     if (projectIdError) errors.push(projectIdError);
   }
   if (data.milestone_id !== undefined && data.milestone_id !== null) {

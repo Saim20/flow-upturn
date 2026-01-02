@@ -13,6 +13,9 @@ import { Project, useProjects } from "@/hooks/useProjects";
 import { getEmployeeId } from "@/lib/utils/auth";
 import { useAuth } from "@/lib/auth/auth-context";
 import { extractEmployeeIdsFromProjects } from "@/lib/utils/project-utils";
+import { PERMISSION_MODULES } from "@/lib/constants";
+import { captureError } from "@/lib/sentry";
+import ConfirmationModal from "@/components/ui/modals/ConfirmationModal";
 
 import ProjectDetails from "./ProjectDetails";
 import { UpdateProjectPage } from "./CreateNewProject";
@@ -35,8 +38,12 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
 
   const { employees, fetchEmployeesByIds } = useEmployees();
   const { departments, fetchDepartments } = useDepartments();
-  const { employeeInfo } = useAuth();
+  const { employeeInfo, canWrite, canDelete } = useAuth();
   const router = useRouter();
+
+  // Permission checks
+  const canWriteProjects = canWrite(PERMISSION_MODULES.PROJECTS);
+  const canDeleteProjects = canDelete(PERMISSION_MODULES.PROJECTS);
 
   const [projectDetailsId, setProjectDetailsId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -46,6 +53,11 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
   const [searching, setSearching] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; projectId: string | null; projectTitle: string }>({
+    isOpen: false,
+    projectId: null,
+    projectTitle: "",
+  });
 
   const hasFetched = useRef(false);
 
@@ -155,10 +167,9 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
       toast.success("Project updated successfully");
       setSelectedProject(null);
       if (values.status === "Completed") setActiveTab("completed");
-      // await fetchOngoingProjects(10, true);
     } catch (error) {
+      captureError(error, { operation: "updateProject", projectId: values.id });
       toast.error("Error updating project");
-      console.error(error);
     }
   };
 
@@ -167,15 +178,23 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
     router.push("/ops/project?tab=create");
   };
 
+  /** Open Delete Confirmation */
+  const openDeleteConfirmation = (id: string, title: string) => {
+    setDeleteConfirmation({ isOpen: true, projectId: id, projectTitle: title });
+  };
+
   /** Delete Project */
-  const handleDeleteProject = async (id: string) => {
+  const handleDeleteProject = async () => {
+    if (!deleteConfirmation.projectId) return;
+    
     try {
-      await deleteProject(id);
+      await deleteProject(deleteConfirmation.projectId);
       toast.success("Project deleted successfully");
+      setDeleteConfirmation({ isOpen: false, projectId: null, projectTitle: "" });
       await fetchOngoingProjects(10, true);
     } catch (error) {
+      captureError(error, { operation: "deleteProject", projectId: deleteConfirmation.projectId });
       toast.error("Error deleting project");
-      console.error(error);
     }
   };
 
@@ -239,10 +258,10 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
                             employees={employees}
                             departments={departments.filter((d) => d.id != null) as any}
                             onEdit={() => setSelectedProject(project)}
-                            onDelete={() => handleDeleteProject(project.id!)}
+                            onDelete={() => openDeleteConfirmation(project.id!, project.project_title || "Untitled Project")}
                             onDetails={() => setProjectDetailsId(project.id!)}
-                            showEdit={project.created_by === userId}
-                            showDelete={project.created_by === userId}
+                            showEdit={canWriteProjects && project.created_by === userId}
+                            showDelete={canDeleteProjects && project.created_by === userId}
                             showDetails={true}
                           />
                         )
@@ -302,6 +321,17 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
           onClose={() => setSelectedProject(null)}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, projectId: null, projectTitle: "" })}
+        onConfirm={handleDeleteProject}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${deleteConfirmation.projectTitle}"? This action cannot be undone and will also delete all associated milestones.`}
+        confirmText="Delete"
+        variant="danger"
+      />
     </AnimatePresence>
   );
 }

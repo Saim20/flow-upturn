@@ -216,7 +216,26 @@ DO $$ BEGIN
 
     DROP POLICY IF EXISTS "Users can view milestone_records" ON milestone_records;
     CREATE POLICY "Users can view milestone_records" ON milestone_records FOR SELECT USING (
-      has_permission(auth.uid(), 'milestones', 'can_read')
+      company_id = get_auth_company_id()
+      AND has_permission(auth.uid(), 'milestones', 'can_read')
+    );
+
+    DROP POLICY IF EXISTS "Users can create milestone_records" ON milestone_records;
+    CREATE POLICY "Users can create milestone_records" ON milestone_records FOR INSERT WITH CHECK (
+      company_id = get_auth_company_id()
+      AND has_permission(auth.uid(), 'milestones', 'can_write')
+    );
+
+    DROP POLICY IF EXISTS "Users can update milestone_records" ON milestone_records;
+    CREATE POLICY "Users can update milestone_records" ON milestone_records FOR UPDATE USING (
+      company_id = get_auth_company_id()
+      AND (has_permission(auth.uid(), 'milestones', 'can_write') OR has_permission(auth.uid(), 'milestones', 'can_approve'))
+    );
+
+    DROP POLICY IF EXISTS "Users can delete milestone_records" ON milestone_records;
+    CREATE POLICY "Users can delete milestone_records" ON milestone_records FOR DELETE USING (
+      company_id = get_auth_company_id()
+      AND has_permission(auth.uid(), 'milestones', 'can_delete')
     );
   END IF;
 END $$;
