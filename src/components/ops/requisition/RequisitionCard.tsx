@@ -67,7 +67,7 @@ export const RequisitionCard: React.FC<RequisitionCardProps> = ({
       {/* Header */}
       <div className="flex justify-between items-start">
         <div className="flex items-start gap-3">
-          <Package className="text-blue-600 mt-1" size={20} />
+          <Package className="text-primary-600 dark:text-primary-400 mt-1" size={20} />
           <div>
             <h3 className="font-semibold text-foreground-primary">
               {requisitionTypes.find(
@@ -89,7 +89,7 @@ export const RequisitionCard: React.FC<RequisitionCardProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onEdit(req)}
-                className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900 transition-colors"
               >
                 <Pencil size={12} />
                 <span>Edit</span>
@@ -216,7 +216,7 @@ export const RequisitionCard: React.FC<RequisitionCardProps> = ({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => onEdit(req)}
-                className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-2 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 px-4 py-2 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900 transition-colors"
               >
                 <Pencil size={16} />
                 <span>Edit</span>
@@ -249,7 +249,7 @@ export const RequisitionCard: React.FC<RequisitionCardProps> = ({
                     handleUpdateRequest?.("Approved", req.id, req.employee_id, comment)
                   }
                   disabled={processingId === req.id}
-                  className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 bg-success hover:bg-success/90 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {processingId === req.id ? (
                     <InlineSpinner size="xs" color="white" />

@@ -177,9 +177,9 @@ export function EntityListItem({
               }}
               className={`
                 ${sizes.button}
-                rounded-md bg-blue-50 dark:bg-blue-900/30
-                text-blue-600 dark:text-blue-400 flex items-center gap-1
-                hover:bg-blue-100 dark:hover:bg-blue-900/50
+                rounded-md bg-primary-50 dark:bg-primary-950/30
+                text-primary-600 dark:text-primary-400 flex items-center gap-1
+                hover:bg-primary-100 dark:hover:bg-primary-900
                 transition-colors
               `}
             >

@@ -212,7 +212,7 @@ export default function NotificationDropdown({
             <div className="border-t border-border-primary px-4 py-2">
               <Link
                 href="/notifications"
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
                 onClick={onClose}
               >
                 View all notifications
@@ -245,7 +245,7 @@ function NotificationItem({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-4 border-l-4 ${priorityStyle} ${!notification.is_read ? 'bg-blue-50' : ''}`}
+      className={`p-4 border-l-4 ${priorityStyle} ${!notification.is_read ? 'bg-primary-50 dark:bg-primary-950/30' : ''}`}
     >
       <div className="flex items-start gap-3">
         <div className={`shrink-0 ${iconColor}`}>

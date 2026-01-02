@@ -63,7 +63,7 @@ export default function MilestoneList({
                       {m.milestone_title}
                     </h4>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                      <span className="text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 px-2 py-1 rounded-full">
                         {m.weightage}%
                       </span>
                       <div className="flex gap-1">

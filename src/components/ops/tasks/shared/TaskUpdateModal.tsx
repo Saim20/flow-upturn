@@ -164,9 +164,9 @@ export default function TaskUpdateModal({
         />
 
         {formData.milestone_id && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> This task is associated with milestone: <span className="font-semibold">{milestoneTitle || `ID ${formData.milestone_id}`}</span>
+          <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4">
+            <p className="text-sm text-foreground-primary">
+              <strong>Note:</strong> This task is associated with milestone ID: {formData.milestone_id}
             </p>
           </div>
         )}

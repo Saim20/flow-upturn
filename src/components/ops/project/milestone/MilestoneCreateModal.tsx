@@ -177,8 +177,8 @@ export default function MilestoneCreateModal({
         />
 
         {currentTotalWeightage > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
+          <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4">
+            <p className="text-sm text-foreground-primary">
               <strong>Current Project Weightage:</strong> {currentTotalWeightage}%
               <br />
               <strong>Available Weightage:</strong> {getMaxWeightage()}%

@@ -17,7 +17,7 @@ export default function NotificationItem({ message }: NotificationItemProps) {
       {!isRead && (
         <button
           onClick={handleMarkAsRead}
-          className="ml-4 text-sm text-blue-500 hover:underline"
+          className="ml-4 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
         >
           Mark as Read
         </button>

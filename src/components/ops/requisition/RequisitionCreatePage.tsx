@@ -308,7 +308,7 @@ export default function RequisitionCreatePage({
         onClick={() => setIsOneOff(!isOneOff)}
       >
         <div
-          className={`w-12 h-6 rounded-full relative ${isOneOff ? "bg-blue-500" : "bg-gray-300"
+          className={`w-12 h-6 rounded-full relative ${isOneOff ? "bg-primary-500" : "bg-border-secondary dark:bg-surface-hover"
             } transition-colors duration-300`}
         >
           <motion.div

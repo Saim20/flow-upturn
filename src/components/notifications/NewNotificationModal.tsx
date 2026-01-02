@@ -26,7 +26,7 @@ const iconMap = {
 
 const colorMap = {
   'red': 'text-error bg-error/10 dark:bg-error/20',
-  'blue': 'text-blue-500 bg-blue-50 dark:bg-blue-900/30',
+  'blue': 'text-primary-500 bg-primary-50 dark:bg-primary-950/30',
   'green': 'text-success bg-success/10 dark:bg-success/20',
   'purple': 'text-purple-500 bg-purple-50 dark:bg-purple-900/30',
   'orange': 'text-warning bg-warning/10 dark:bg-warning/20',
@@ -36,7 +36,7 @@ const colorMap = {
 const priorityColors = {
   'urgent': 'border-error bg-error/10',
   'high': 'border-warning bg-warning/10',
-  'normal': 'border-blue-500 bg-blue-50',
+  'normal': 'border-primary-500 bg-primary-50 dark:bg-primary-950/30',
   'low': 'border-border-secondary bg-surface-secondary',
 };
 
