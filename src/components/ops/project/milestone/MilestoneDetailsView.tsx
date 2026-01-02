@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Pencil, TrashSimple, Plus, Target, ArrowUpRight, CaretLeft, Clock, CheckCircle, Tag, User } from "@phosphor-icons/react";
+import { Calendar, Pencil, TrashSimple, Plus, Target, ArrowUpRight, Clock, CheckCircle, Tag, User } from "@phosphor-icons/react";
 import { Employee } from "@/lib/types/schemas";
 import { Milestone } from "@/hooks/useMilestones";
 import { Task, useTasks } from "@/hooks/useTasks";
@@ -18,50 +18,40 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { captureSupabaseError } from "@/lib/sentry";
 import { PERMISSION_MODULES } from "@/lib/constants";
 
-// Allow partial employee objects with at minimum id and name
 type EmployeeBasic = Pick<Employee, 'id' | 'name'> & Partial<Employee>;
 
-interface MilestoneDetailsProps {
+interface MilestoneDetailsViewProps {
   id: number;
+  projectId: string;
   onClose: () => void;
   project_created_by: string;
   employees: EmployeeBasic[];
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return "N/A";
   const [year, month, dayStr] = dateStr.split("-");
   const day = parseInt(dayStr, 10);
   const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
   const monthName = months[parseInt(month, 10) - 1];
-
   return `${day} ${monthName}, ${year}`;
 }
 
-export default function MilestoneDetails({
+export default function MilestoneDetailsView({
   id,
+  projectId,
   onClose,
   project_created_by,
   employees,
-}: MilestoneDetailsProps) {
-  const [milestoneId, setMilestoneId] = useState<number>(id);
+}: MilestoneDetailsViewProps) {
+  const [milestoneId] = useState<number>(id);
   const [milestoneDetails, setMilestoneDetails] = useState<Milestone | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Tasks states and functions
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState<boolean>(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -70,26 +60,12 @@ export default function MilestoneDetails({
   const [taskDetailsId, setTaskDetailsId] = useState<string | null>(null);
   const { canWrite, canDelete } = useAuth();
 
-  // Permission checks
   const canWriteTasks = canWrite(PERMISSION_MODULES.TASKS);
   const canDeleteTasks = canDelete(PERMISSION_MODULES.TASKS);
-
-  const [userId, setUserId] = useState<string>("")
-
-  useEffect(() => {
-    const initUserId = async () => {
-      const userId = await getEmployeeId();
-
-      setUserId(userId)
-    }
-
-    initUserId()
-  }, [])
 
   const handleCreateTask = async (values: any) => {
     try {
       const result = await createTask(values);
-      
       if (!result || !result.success) {
         const errorMessage = result?.error && typeof result.error === 'object' && 'message' in result.error 
           ? (result.error as { message: string }).message 
@@ -97,7 +73,6 @@ export default function MilestoneDetails({
         toast.error(errorMessage);
         return;
       }
-      
       setIsCreatingTask(false);
       fetchTasksByMilestoneId(milestoneId);
       toast.success("Task created successfully!");
@@ -110,7 +85,6 @@ export default function MilestoneDetails({
   const handleUpdateTask = async (values: any) => {
     try {
       const result = await updateTask(values);
-      
       if (!result || !result.success) {
         const errorMessage = result?.error && typeof result.error === 'object' && 'message' in result.error 
           ? (result.error as { message: string }).message 
@@ -118,7 +92,6 @@ export default function MilestoneDetails({
         toast.error(errorMessage);
         return;
       }
-      
       setSelectedTask(null);
       fetchTasksByMilestoneId(milestoneId);
       toast.success("Task updated successfully!");
@@ -132,7 +105,7 @@ export default function MilestoneDetails({
     try {
       await deleteTask(id);
       fetchTasksByMilestoneId(milestoneId);
-      toast.success("Task deleted successfully")
+      toast.success("Task deleted successfully");
     } catch (error) {
       toast.error("Error deleting task");
       captureSupabaseError(
@@ -148,7 +121,6 @@ export default function MilestoneDetails({
     if (selectedTask) setSelectedTask(selectedTask);
   };
 
-  // Helper functions for task display
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case 'urgent':
@@ -168,7 +140,6 @@ export default function MilestoneDetails({
   const formatDueDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return null;
     try {
-      const date = new Date(dateStr);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const dueDate = new Date(dateStr);
@@ -210,14 +181,14 @@ export default function MilestoneDetails({
         .eq("company_id", company_id);
 
       if (error) {
-        setError("Error fetching Milestone details");
+        setError("Error fetching milestone details");
         captureSupabaseError(error, "fetchMilestoneDetails", { milestoneId: id, companyId: company_id });
         return;
       }
 
       setMilestoneDetails(data[0]);
     } catch (error) {
-      setError("Error fetching Milestone details");
+      setError("Error fetching milestone details");
       captureSupabaseError(
         { message: error instanceof Error ? error.message : String(error) },
         "fetchMilestoneDetails",
@@ -242,7 +213,6 @@ export default function MilestoneDetails({
         .order("created_at", { ascending: true });
 
       if (error) {
-        setError("Error fetching tasks");
         captureSupabaseError(error, "fetchTasksByMilestoneId", { milestoneId: id, companyId: company_id });
         return;
       }
@@ -252,9 +222,8 @@ export default function MilestoneDetails({
         return rest;
       });
 
-      setTasks(formatData);
+      setTasks(formatData || []);
     } catch (error) {
-      setError("Error fetching tasks");
       captureSupabaseError(
         { message: error instanceof Error ? error.message : String(error) },
         "fetchTasksByMilestoneId",
@@ -269,13 +238,12 @@ export default function MilestoneDetails({
     if (id) {
       fetchMilestoneDetails(id);
       fetchTasksByMilestoneId(id);
-      setMilestoneId(id);
     }
   }, [id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner />
       </div>
     );
@@ -283,110 +251,79 @@ export default function MilestoneDetails({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen text-error">
+      <div className="flex items-center justify-center min-h-[400px] text-error">
         <p>{error}</p>
       </div>
     );
   }
 
   return (
-    <div>
-      {!taskDetailsId && (
-        <div className="w-full p-4 sm:p-6 lg:p-10 text-foreground-primary">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-              <Target size={24} className="text-foreground-secondary" weight="regular" />
-              <h2 className="text-xl md:text-2xl font-semibold">
-                Milestone Details
-              </h2>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="button"
-              onClick={onClose}
-              className="flex items-center gap-2 px-4 py-2 bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary rounded-md hover:bg-surface-hover transition-colors duration-150"
-            >
-              <CaretLeft size={16} weight="regular" />
-              Back
-            </motion.button>
-          </div>
-
+    <div className="space-y-8">
+      {!taskDetailsId ? (
+        <>
+          {/* Milestone Info Card */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-surface-primary rounded-lg border border-border-primary p-6 shadow-sm space-y-4"
+            className="bg-surface-primary rounded-lg border border-border-primary p-6 shadow-sm"
           >
-            <div className="grid gap-4">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground-secondary">Milestone Name:</span>
-                <span className="text-foreground-primary">
-                  {milestoneDetails?.milestone_title || "N/A"}
-                </span>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground-primary mb-2">
+                  {milestoneDetails?.milestone_title || "Milestone"}
+                </h2>
+                <StatusBadge status={milestoneDetails?.status || "N/A"} />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground-secondary">Status:</span>
-                {/* <span className="px-2 py-1 rounded-full text-sm bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary">
-                  {milestoneDetails?.status || "N/A"}
-                </span> */}
-
-                <StatusBadge
-                  status={milestoneDetails?.status || "N/A"}
-                />
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-medium text-foreground-secondary">Assignees:</span>
-                <div className="flex flex-wrap gap-2">
-                  {(milestoneDetails?.assignees && milestoneDetails.assignees.length > 0) ? (
-                    milestoneDetails.assignees.map((assignee: string, i: number) => (
-                      <span
-                        key={i}
-                        className="bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary text-xs px-2 py-1 rounded-full"
-                      >
-                        {employees.find((employee) => employee.id === assignee)?.name || "N/A"}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-foreground-tertiary text-sm">No assignees</span>
-                  )}
+              {milestoneDetails?.weightage && (
+                <div className="text-right">
+                  <span className="text-sm text-foreground-secondary">Weight</span>
+                  <div className="text-2xl font-bold text-primary-600">{milestoneDetails.weightage}%</div>
                 </div>
-              </div>
-            </div>
-
-            <div className="flex gap-6 pt-4 text-sm border-t border-border-primary">
-              <div className="flex items-center gap-2 text-foreground-secondary">
-                <Calendar size={16} weight="regular" />
-                <span>
-                  <span className="font-medium">Start:</span>{" "}
-                  {formatDate(milestoneDetails?.start_date || "")}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-foreground-secondary">
-                <Calendar size={16} weight="regular" />
-                <span>
-                  <span className="font-medium">End:</span>{" "}
-                  {formatDate(milestoneDetails?.end_date || "")}
-                </span>
-              </div>
+              )}
             </div>
 
             {milestoneDetails?.description && (
-              <div className="pt-4 border-t border-border-primary">
-                <p className="text-foreground-secondary">{milestoneDetails.description}</p>
+              <p className="text-foreground-secondary mb-4">{milestoneDetails.description}</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border-primary">
+              <div className="flex items-center gap-2 text-foreground-secondary">
+                <Calendar size={16} weight="regular" />
+                <span><span className="font-medium">Start:</span> {formatDate(milestoneDetails?.start_date || "")}</span>
+              </div>
+              <div className="flex items-center gap-2 text-foreground-secondary">
+                <Calendar size={16} weight="regular" />
+                <span><span className="font-medium">End:</span> {formatDate(milestoneDetails?.end_date || "")}</span>
+              </div>
+            </div>
+
+            {milestoneDetails?.assignees && milestoneDetails.assignees.length > 0 && (
+              <div className="pt-4 border-t border-border-primary mt-4">
+                <span className="text-sm font-medium text-foreground-secondary mb-2 block">Assignees</span>
+                <div className="flex flex-wrap gap-2">
+                  {milestoneDetails.assignees.map((assignee: string, i: number) => (
+                    <span
+                      key={i}
+                      className="bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary text-sm px-3 py-1 rounded-full"
+                    >
+                      {employees.find((emp) => emp.id === assignee)?.name || "Unknown"}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>
 
+          {/* Tasks Section */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mt-8"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Target size={20} className="text-foreground-secondary" weight="regular" />
-                <h3 className="text-lg font-semibold">Task List</h3>
+                <h3 className="text-lg font-semibold">Tasks ({tasks.length})</h3>
               </div>
 
               {canWriteTasks && (
@@ -409,7 +346,7 @@ export default function MilestoneDetails({
                 tasks.map((task) => {
                   const dueInfo = formatDueDate(task.end_date);
                   const assigneeCount = getAssigneeCount(task.assignees);
-                  const isCompleted = task.status;
+                  const isCompleted = task.status === true;
                   
                   return (
                     <motion.div
@@ -419,16 +356,11 @@ export default function MilestoneDetails({
                       whileHover={{ y: -2 }}
                       className="bg-surface-primary rounded-lg border border-border-primary p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
                     >
-                      {/* Header with title and status */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             {isCompleted && (
-                              <CheckCircle
-                                size={18}
-                                weight="fill"
-                                className="text-success shrink-0"
-                              />
+                              <CheckCircle size={18} weight="fill" className="text-success shrink-0" />
                             )}
                             <h4 className={`font-medium text-foreground-primary truncate ${isCompleted ? 'line-through opacity-70' : ''}`}>
                               {task.task_title}
@@ -436,9 +368,7 @@ export default function MilestoneDetails({
                           </div>
                           
                           {task.task_description && (
-                            <p className="text-sm text-foreground-secondary line-clamp-2">
-                              {task.task_description}
-                            </p>
+                            <p className="text-sm text-foreground-secondary line-clamp-2">{task.task_description}</p>
                           )}
                         </div>
                         
@@ -448,7 +378,7 @@ export default function MilestoneDetails({
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               aria-label={`Edit task ${task.task_title}`}
-                              onClick={() => task.id !== null && handleDisplayUpdateTaskModal(task.id!)}
+                              onClick={() => task.id && handleDisplayUpdateTaskModal(task.id)}
                               className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150"
                             >
                               <Pencil size={15} weight="regular" />
@@ -460,7 +390,7 @@ export default function MilestoneDetails({
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               aria-label={`Delete task ${task.task_title}`}
-                              onClick={() => task.id !== null && handleDeleteTask(task.id!)}
+                              onClick={() => task.id && handleDeleteTask(task.id)}
                               className="p-1.5 text-foreground-secondary hover:text-error hover:bg-error/10 dark:hover:bg-error/20 rounded-full transition-colors duration-150"
                             >
                               <TrashSimple size={15} weight="regular" />
@@ -471,7 +401,7 @@ export default function MilestoneDetails({
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             aria-label={`View task ${task.task_title}`}
-                            onClick={() => task.id !== null && setTaskDetailsId(task.id!)}
+                            onClick={() => task.id && setTaskDetailsId(task.id)}
                             className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150"
                           >
                             <ArrowUpRight size={15} weight="regular" />
@@ -479,9 +409,7 @@ export default function MilestoneDetails({
                         </div>
                       </div>
 
-                      {/* Task metadata */}
                       <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border-secondary">
-                        {/* Priority badge */}
                         {task.priority && (
                           <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
                             <Tag size={14} weight="fill" />
@@ -489,18 +417,14 @@ export default function MilestoneDetails({
                           </div>
                         )}
                         
-                        {/* Status badge */}
-                        {task.status && (
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            isCompleted 
-                              ? 'bg-success/10 dark:bg-success/20 text-success border-success/30' 
-                              : 'bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary'
-                          }`}>
-                            <span className="capitalize">{task.status ? "Complete" : "Pending"}</span>
-                          </div>
-                        )}
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                          isCompleted 
+                            ? 'bg-success/10 dark:bg-success/20 text-success border-success/30' 
+                            : 'bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary'
+                        }`}>
+                          <span>{isCompleted ? "Complete" : "Pending"}</span>
+                        </div>
                         
-                        {/* Due date */}
                         {dueInfo && (
                           <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
                             dueInfo.isOverdue 
@@ -514,7 +438,6 @@ export default function MilestoneDetails({
                           </div>
                         )}
                         
-                        {/* Assignee count */}
                         {assigneeCount > 0 && (
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary border-border-primary">
                             <User size={14} weight="fill" />
@@ -540,7 +463,7 @@ export default function MilestoneDetails({
 
           {isCreatingTask && (
             <TaskCreateModal
-              projectId={milestoneDetails?.project_id ?? ""}
+              projectId={projectId}
               milestoneId={milestoneId}
               milestoneTitle={milestoneDetails?.milestone_title}
               onClose={() => setIsCreatingTask(false)}
@@ -567,10 +490,8 @@ export default function MilestoneDetails({
               onSubmit={handleUpdateTask}
             />
           )}
-        </div>
-      )}
-
-      {taskDetailsId && (
+        </>
+      ) : (
         <TaskDetails
           id={taskDetailsId}
           onTaskStatusUpdate={() => fetchTasksByMilestoneId(milestoneId)}

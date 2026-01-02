@@ -5,7 +5,6 @@ import ProjectLayout from "../ProjectLayout";
 import ProjectDetails from "@/components/ops/project/ProjectDetails";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDepartments } from "@/hooks/useDepartments";
-import { useProjects } from "@/hooks/useProjects";
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params); // ✅ unwrap params safely

@@ -166,7 +166,7 @@ export default function ProjectLayout({
                         }}
                         tutorialPrefix="project"
                     />
-                    <div className="p-4">{overrideContent}</div>
+                    {overrideContent}
                 </>
             ) : (
                 <TabView

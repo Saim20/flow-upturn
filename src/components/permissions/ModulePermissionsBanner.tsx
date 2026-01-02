@@ -4,7 +4,7 @@ import React from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { PermissionModule, PERMISSION_MODULES } from "@/lib/constants";
 import { PermissionsBadgeGroup } from "./PermissionBadge";
-import { Info } from "@phosphor-icons/react";
+import { Info, X } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ModulePermissionsBannerProps {
@@ -64,75 +64,91 @@ export function ModulePermissionsBanner({
   if (compact) {
     return (
       <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="mb-4"
-        >
-          <div className="bg-linear-to-r from-primary-50 to-indigo-50 dark:from-primary-900/20 dark:to-indigo-900/20 border border-primary-100 dark:border-primary-800 rounded-lg px-4 py-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Info size={18} className="text-primary-600 dark:text-primary-400 shrink-0" />
-                <span className="text-sm font-medium text-primary-900 dark:text-primary-100 truncate">
-                  Your {moduleName} Permissions:
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <PermissionsBadgeGroup permissions={modulePermissions} iconOnly size="sm" />
+        {!isDismissed && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="mb-4 overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-primary-50/50 via-indigo-50/30 to-primary-50/50 dark:from-primary-900/10 dark:via-indigo-900/5 dark:to-primary-900/10 border border-primary-200/60 dark:border-primary-800/30 rounded-lg px-4 py-2.5 backdrop-blur-sm transition-all duration-200 hover:border-primary-300/80 dark:hover:border-primary-700/50">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <Info size={16} weight="duotone" className="text-primary-600 dark:text-primary-400 shrink-0" />
+                  <span className="text-xs font-medium text-primary-900 dark:text-primary-100 truncate">
+                    {moduleName} Access:
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <PermissionsBadgeGroup permissions={modulePermissions} size="sm" />
+                  </div>
+                </div>
                 {dismissible && (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setIsDismissed(true)}
-                    className="text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 ml-2"
-                    aria-label="Dismiss"
+                    className="p-1 text-primary-600/70 dark:text-primary-400/70 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-100/50 dark:hover:bg-primary-800/20 rounded-md transition-colors shrink-0"
+                    aria-label="Dismiss permissions banner"
                   >
-                    ×
-                  </button>
+                    <X size={14} weight="bold" />
+                  </motion.button>
                 )}
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     );
   }
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        className="mb-6"
-      >
-        <div className="bg-linear-to-r from-primary-50 to-indigo-50 dark:from-primary-900/20 dark:to-indigo-900/20 border border-primary-100 dark:border-primary-800 rounded-lg p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <Info size={24} weight="duotone" className="text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100 mb-1">
-                  Your {moduleName} Access Level
-                </h3>
-                <p className="text-xs text-primary-700 dark:text-primary-300">
-                  These are the actions you can perform in this module
-                </p>
+      {!isDismissed && (
+        <motion.div
+          initial={{ opacity: 0, y: -10, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.98 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="mb-6"
+        >
+          <div className="relative bg-gradient-to-br from-primary-50 via-indigo-50 to-primary-100/50 dark:from-primary-900/20 dark:via-indigo-900/15 dark:to-primary-900/25 border border-primary-200 dark:border-primary-800/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-sm">
+            {/* Decorative gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary-100/20 dark:to-primary-900/10 rounded-xl pointer-events-none" />
+            
+            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2 bg-primary-100 dark:bg-primary-900/40 rounded-lg">
+                  <Info size={20} weight="duotone" className="text-primary-600 dark:text-primary-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-950 dark:text-primary-50 mb-1 tracking-tight">
+                    Your {moduleName} Permissions
+                  </h3>
+                  <p className="text-xs text-primary-700/80 dark:text-primary-300/70 leading-relaxed">
+                    Actions you can perform in this module
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 sm:ml-auto">
+                <PermissionsBadgeGroup permissions={modulePermissions} size="md" />
+                {dismissible && (
+                  <motion.button
+                    whileHover={{ scale: 1.05, rotate: 90 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsDismissed(true)}
+                    className="p-1.5 text-primary-600/70 dark:text-primary-400/70 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-100/50 dark:hover:bg-primary-800/20 rounded-lg transition-colors"
+                    aria-label="Dismiss permissions banner"
+                  >
+                    <X size={16} weight="bold" />
+                  </motion.button>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <PermissionsBadgeGroup permissions={modulePermissions} size="md" />
-              {dismissible && (
-                <button
-                  onClick={() => setIsDismissed(true)}
-                  className="text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 text-xl font-bold ml-2"
-                  aria-label="Dismiss"
-                >
-                  ×
-                </button>
-              )}
-            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }

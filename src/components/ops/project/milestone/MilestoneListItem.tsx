@@ -5,13 +5,14 @@ import { motion } from "framer-motion";
 import { Pencil, ArrowSquareOut } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Milestone, Project } from "@/lib/types/schemas";
+import Link from "next/link";
 
 interface MilestoneListItemProps {
   milestone: Milestone;
   projectDetails: Project;
   onMilestoneStatusUpdate: (id: number, updated: Milestone) => void;
   setSelectedMilestone: (milestone: Milestone) => void;
-  setMilestoneDetailsId: (id: number) => void;
+  setMilestoneDetailsId?: (id: number) => void; // Now optional - for backward compatibility
   index?: number;
   canWriteMilestones?: boolean;
 }
@@ -25,12 +26,14 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
   index,
   canWriteMilestones = false,
 }) => {
+  const milestoneUrl = `/ops/project/${projectDetails.id}/milestone/${milestone.id}`;
+  
   return (
     <motion.div
       key={milestone.id ?? index}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-border-primary rounded-lg p-4 space-y-3"
+      className="border border-border-primary rounded-lg p-4 space-y-3 hover:border-primary-300 dark:hover:border-primary-700 transition-colors duration-200"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center justify-center gap-3">
@@ -105,16 +108,15 @@ const MilestoneListItem: React.FC<MilestoneListItemProps> = ({
                   <Pencil size={14} />
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="View milestone details"
-                onClick={() =>
-                  milestone.id && setMilestoneDetailsId(milestone.id)
-                }
-              >
-                <ArrowSquareOut size={14} />
-              </Button>
+              <Link href={milestoneUrl}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="View milestone details"
+                >
+                  <ArrowSquareOut size={14} />
+                </Button>
+              </Link>
             </div>
           )}
         </div>

@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useMilestones } from "@/hooks/useMilestones";
 import { useComments } from "@/hooks/useComments";
-import MilestoneDetails from "./milestone/MilestoneDetails";
 import { formatDate } from "@/lib/utils";
 import {
   validateProject,
@@ -34,6 +33,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { PERMISSION_MODULES } from "@/lib/constants";
 import { captureSupabaseError } from "@/lib/sentry";
+import { ProjectBreadcrumb } from "./navigation";
 
 interface ProjectDetailsProps {
   id: string;
@@ -172,9 +172,6 @@ export default function ProjectDetails({
   const [loadingMilestones, setLoadingMilestones] = useState<boolean>(false);
   const [isCreatingMilestone, setIsCreatingMilestone] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(
-    null
-  );
-  const [milestoneDetailsId, setMilestoneDetailsId] = useState<number | null>(
     null
   );
 
@@ -415,22 +412,27 @@ export default function ProjectDetails({
   }
 
   return (
-    <div className="w-full p-4 sm:p-6 space-y-6">
-      {!milestoneDetailsId && (
+    <div className="w-full">
+      {/* Breadcrumb Navigation */}
+      <ProjectBreadcrumb
+        projectId={projectId}
+        projectTitle={projectDetails.project_title}
+      />
+      
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+        className="space-y-6"
+      >
+        {/* Header */}
         <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-          className="space-y-6"
+          variants={fadeInUp}
+          className="flex items-center justify-between"
         >
-          {/* Header */}
-          <motion.div
-            variants={fadeInUp}
-            className="flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <Building size={24} className="text-blue-600" />
-              <h1 className="text-2xl font-bold text-foreground-primary">
+          <div className="flex items-center gap-3">
+            <Building size={24} className="text-primary-600" />
+            <h1 className="text-2xl font-bold text-foreground-primary">
                 Project Details
               </h1>
             </div>
@@ -576,7 +578,6 @@ export default function ProjectDetails({
                         projectDetails={projectDetails}
                         onMilestoneStatusUpdate={onMilestoneStatusUpdate}
                         setSelectedMilestone={setSelectedMilestone}
-                        setMilestoneDetailsId={setMilestoneDetailsId}
                         index={index}
                         canWriteMilestones={canWriteMilestones}
                       />
@@ -603,7 +604,6 @@ export default function ProjectDetails({
             </Card>
           </motion.div>
         </motion.div>
-      )}
 
       {/* Submission Modal */}
       {displaySubmissionModal && (
@@ -642,16 +642,6 @@ export default function ProjectDetails({
             </div>
           </form>
         </BaseModal>
-      )}
-
-      {/* Milestone Details Modal */}
-      {milestoneDetailsId && (
-        <MilestoneDetails
-          id={milestoneDetailsId}
-          onClose={() => setMilestoneDetailsId(null)}
-          project_created_by={projectDetails.created_by || ""}
-          employees={employees}
-        />
       )}
 
       {/* Milestone Create Modal */}
