@@ -195,17 +195,24 @@ export function UpdateProjectPage({
 
       if (milestones.length > 0) {
         for (const m of milestones) {
-          const milestoneToCreate = { ...m, project_id: projectId };
-          if (m.id) {
-            const milestoneResult = await updateMilestone(m.id, milestoneToCreate)
-          } else {
+          // Check if this is a new milestone (no ID or temp ID) or existing milestone
+          const isNewMilestone = !m.id || (typeof m.id === 'string' && m.id.startsWith('temp_'));
+          
+          if (isNewMilestone) {
+            // Create new milestone - don't include the temp ID
+            const { id, ...milestoneData } = m;
+            const milestoneToCreate = { ...milestoneData, project_id: projectId };
             const milestoneResult = await createMilestone(milestoneToCreate);
             if (!milestoneResult.success) {
               await supabase.from("project_records").delete().match({ id: projectId });
               throw new Error("Failed to create milestones", { cause: milestoneResult.error });
             }
+          } else {
+            // Update existing milestone - don't include ID in the payload
+            const { id, ...milestoneData } = m;
+            const milestoneToUpdate = { ...milestoneData, project_id: projectId };
+            await updateMilestone(m.id, milestoneToUpdate);
           }
-
         }
       }
       onClose();

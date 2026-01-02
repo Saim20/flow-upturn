@@ -34,6 +34,7 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
     hasMoreOngoingProjects,
     ongoingLoading,
     searchOngoingProjects,
+    enrichProjectsWithProgress,
   } = useProjects();
 
   const { employees, fetchEmployeesByIds } = useEmployees();
@@ -50,6 +51,7 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
   const [userId, setUserId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Project[]>([]);
+  const [enrichedProjects, setEnrichedProjects] = useState<(Project & { progress: number })[]>([]);
   const [searching, setSearching] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -133,6 +135,15 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
   };
 
   const displayProjects = searchTerm ? searchResults : ongoingProjects;
+
+  // Enrich projects with calculated progress
+  useEffect(() => {
+    const enrichProjects = async () => {
+      const enriched = await enrichProjectsWithProgress(displayProjects);
+      setEnrichedProjects(enriched);
+    };
+    enrichProjects();
+  }, [displayProjects, enrichProjectsWithProgress]);
 
   /** Empty state only after initial load is complete and not searching */
   useEffect(() => {
@@ -243,31 +254,28 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
 
           {/* Project Cards */}
           <motion.div variants={fadeInUp}>
-            <AnimatePresence>
-              {searching ? (
+            {searching ? (
                 <LoadingSection icon={Building} text="Searching projects..." color="blue" />
-              ) : displayProjects.length > 0 ? (
-                <>
-                  <div className="space-y-4">
-                    {displayProjects.map(
-                      (project) =>
-                        project.id && (
-                          <ProjectCard
-                            key={project.id}
-                            project={project}
-                            employees={employees}
-                            departments={departments.filter((d) => d.id != null) as any}
-                            onEdit={() => setSelectedProject(project)}
-                            onDelete={() => openDeleteConfirmation(project.id!, project.project_title || "Untitled Project")}
-                            onDetails={() => setProjectDetailsId(project.id!)}
-                            showEdit={canWriteProjects && project.created_by === userId}
-                            showDelete={canDeleteProjects && project.created_by === userId}
-                            showDetails={true}
-                          />
-                        )
-                    )}
-                  </div>
-
+              ) : enrichedProjects.length > 0 ? (
+                <div className="space-y-4">
+                  {enrichedProjects.map(
+                    (project, index) =>
+                      project.id && (
+                        <ProjectCard
+                          key={project.id || `project-${index}`}
+                          project={project}
+                          employees={employees}
+                          departments={departments.filter((d) => d.id != null) as any}
+                          onEdit={() => setSelectedProject(project)}
+                          onDelete={() => openDeleteConfirmation(project.id!, project.project_title || "Untitled Project")}
+                          onDetails={() => setProjectDetailsId(project.id!)}
+                          showEdit={canWriteProjects && project.created_by === userId}
+                          showDelete={canDeleteProjects && project.created_by === userId}
+                          showDetails={true}
+                        />
+                      )
+                  )}
+                  
                   {!searchTerm && (
                     <LoadMore
                       isLoading={ongoingLoading}
@@ -275,7 +283,7 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
                       onLoadMore={handleLoadMore}
                     />
                   )}
-                </>
+                </div>
               ) : (
                 showEmpty && (
                   <EmptyState
@@ -294,7 +302,6 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
                   />
                 )
               )}
-            </AnimatePresence>
           </motion.div>
         </motion.div>
       )}
@@ -302,6 +309,7 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
       {/* Details View */}
       {!selectedProject && projectDetailsId && (
         <ProjectDetails
+          key="project-details"
           id={projectDetailsId}
           employees={employees}
           departments={departments}
@@ -314,6 +322,7 @@ function ProjectsList({ setActiveTab }: { setActiveTab: (key: string) => void })
       {/* Update Form */}
       {!projectDetailsId && selectedProject && (
         <UpdateProjectPage
+          key="update-project"
           initialData={selectedProject}
           employees={employees}
           departments={departments}

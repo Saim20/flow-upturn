@@ -7,6 +7,17 @@ import { createMilestoneNotification } from "@/lib/utils/notifications";
 
 export type { Milestone };
 
+// Calculate project progress from completed milestones
+export function calculateProjectProgress(milestones: Milestone[]): number {
+  if (!milestones || milestones.length === 0) return 0;
+  
+  const completedWeightage = milestones
+    .filter(m => m.status === "Completed")
+    .reduce((sum, m) => sum + (m.weightage || 0), 0);
+  
+  return Math.min(completedWeightage, 100);
+}
+
 export function useMilestones() {
   const baseResult = useBaseEntity<Milestone>({
     tableName: "milestone_records",
@@ -14,24 +25,11 @@ export function useMilestones() {
     companyScoped: true,
   });
 
-  const updateMilestoneStatus = async (id: number, data: Partial<Milestone>, projectProgress: number) => {
+  const updateMilestoneStatus = async (id: number, data: Partial<Milestone>) => {
     try {
       const result = await baseResult.updateItem(id, data);
-      if (projectProgress === null) projectProgress = 0;
 
       if (data.status === "Completed") {
-        const updatedProjectProgress = projectProgress + (data.weightage || 0)
-        console.log("Updated Project Progress:", updatedProjectProgress);
-        const { error } = await supabase
-          .from("project_records")
-          .update({ progress: updatedProjectProgress })
-          .eq("id", data.project_id)
-
-        if (error) {
-          console.error("Error updating project progress:", error);
-          throw error;
-        }
-
         // Send notification to project manager about milestone completion
         try {
           // Fetch milestone details with project info

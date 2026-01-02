@@ -147,7 +147,6 @@ export interface Project {
   remark?: string;
   department_ids?: number[];
   goal?: string;
-  progress?: number | null;
   status: string;
   company_id?: number;
   assignees?: string[];

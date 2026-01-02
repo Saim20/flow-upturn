@@ -1,7 +1,7 @@
 "use client";
 
 import { useBaseEntity } from "./core";
-import { Project } from "@/lib/types";
+import { Project, Milestone } from "@/lib/types";
 import { useNotifications } from "./useNotifications";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useCallback, useState } from "react";
@@ -12,6 +12,7 @@ import { set } from "lodash";
 import { captureSupabaseError } from "@/lib/sentry";
 import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 import { checkUserEmailPreference } from "./useEmailPreferences";
+import { calculateProjectProgress } from "./useMilestones";
 
 export type { Project };
 
@@ -410,6 +411,45 @@ export function useProjects() {
     }
   };
 
+  // --- ENRICH PROJECTS WITH CALCULATED PROGRESS ---
+  const enrichProjectsWithProgress = useCallback(
+    async (projects: ProjectDetails[]): Promise<(ProjectDetails & { progress: number })[]> => {
+      if (!projects || projects.length === 0) return [];
+
+      try {
+        // Fetch all milestones for these projects in one query
+        const projectIds = projects.map(p => p.id).filter(Boolean);
+        
+        const { data: milestones, error } = await supabase
+          .from("milestone_records")
+          .select("project_id, status, weightage")
+          .in("project_id", projectIds);
+
+        if (error) throw error;
+
+        // Group milestones by project_id
+        const milestonesByProject = new Map<string, Milestone[]>();
+        milestones?.forEach(milestone => {
+          if (!milestonesByProject.has(milestone.project_id!)) {
+            milestonesByProject.set(milestone.project_id!, []);
+          }
+          milestonesByProject.get(milestone.project_id!)!.push(milestone as Milestone);
+        });
+
+        // Calculate progress for each project
+        return projects.map(project => ({
+          ...project,
+          progress: calculateProjectProgress(milestonesByProject.get(project.id!) || [])
+        }));
+      } catch (error) {
+        console.error("Error enriching projects with progress:", error);
+        // Return projects with 0 progress on error
+        return projects.map(project => ({ ...project, progress: 0 }));
+      }
+    },
+    []
+  );
+
   return {
     ...baseResult,
 
@@ -430,6 +470,8 @@ export function useProjects() {
 
     searchOngoingProjects,
     searchCompletedProjects,
+
+    enrichProjectsWithProgress,
 
     createProject,
     updateProject,

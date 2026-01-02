@@ -32,6 +32,7 @@ function CompletedProjectsList({ setActiveTab }: { setActiveTab: (key: string) =
     hasMoreCompletedProjects,
     completedLoading,
     searchCompletedProjects,
+    enrichProjectsWithProgress,
   } = useProjects();
 
   const { employees, fetchEmployeesByIds } = useEmployees();
@@ -47,6 +48,7 @@ function CompletedProjectsList({ setActiveTab }: { setActiveTab: (key: string) =
   const [userId, setUserId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Project[]>([]);
+  const [enrichedProjects, setEnrichedProjects] = useState<(Project & { progress: number })[]>([]);
   const [searching, setSearching] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -117,6 +119,15 @@ function CompletedProjectsList({ setActiveTab }: { setActiveTab: (key: string) =
   };
 
   const displayProjects = searchTerm ? searchResults : completedProjects;
+
+  // Enrich projects with calculated progress
+  useEffect(() => {
+    const enrichProjects = async () => {
+      const enriched = await enrichProjectsWithProgress(displayProjects);
+      setEnrichedProjects(enriched);
+    };
+    enrichProjects();
+  }, [displayProjects, enrichProjectsWithProgress]);
 
   /** Empty state only after initial load is complete and no search is active */
   useEffect(() => {
@@ -221,9 +232,9 @@ function CompletedProjectsList({ setActiveTab }: { setActiveTab: (key: string) =
               )}
 
               {/* 3. Projects List (Show if not loading and projects exist) */}
-              {(!completedLoading || searchTerm) && displayProjects.length > 0 && (
+              {(!completedLoading || searchTerm) && enrichedProjects.length > 0 && (
                 <motion.div key="project-list" className="space-y-4">
-                  {displayProjects.map(
+                  {enrichedProjects.map(
                     (project) =>
                       project.id && (
                         <ProjectCard

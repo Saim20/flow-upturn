@@ -12,7 +12,7 @@ interface Department {
 }
 
 interface ProjectCardProps {
-  project: Project;
+  project: Project & { progress?: number }; // Progress is calculated from milestones
   onEdit?: () => void;
   onDelete?: () => void;
   onDetails?: () => void;

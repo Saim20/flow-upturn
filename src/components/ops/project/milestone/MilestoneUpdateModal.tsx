@@ -108,7 +108,20 @@ export default function MilestoneUpdateModal({
   };
 
   const hasChanges = () => {
-    return JSON.stringify(formData) !== JSON.stringify(initialData);
+    // Compare only the fields that matter, avoiding circular references
+    const fieldsToCompare = [
+      'milestone_title',
+      'description',
+      'start_date',
+      'end_date',
+      'status',
+      'weightage',
+    ];
+    
+    return fieldsToCompare.some(field => {
+      const key = field as keyof MilestoneData;
+      return formData[key] !== initialData[key];
+    }) || JSON.stringify(formData.assignees) !== JSON.stringify(initialData.assignees);
   };
 
   const getMaxWeightage = () => {
@@ -160,7 +173,7 @@ export default function MilestoneUpdateModal({
             label="Weightage (%)"
             name="weightage"
             value={formData.weightage ?? 0}
-            onChange={(value) => handleInputChange('weightage', value)}
+            onChange={(e) => handleInputChange('weightage', Number(e.target.value))}
             min={1}
             max={getMaxWeightage() + (initialData.weightage || 0)}
             error={errors.weightage || getWeightageError()}

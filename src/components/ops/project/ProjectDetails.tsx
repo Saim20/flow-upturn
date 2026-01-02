@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useMilestones } from "@/hooks/useMilestones";
+import { useMilestones, calculateProjectProgress } from "@/hooks/useMilestones";
 import { useComments } from "@/hooks/useComments";
 import { formatDate } from "@/lib/utils";
 import {
@@ -178,6 +178,10 @@ export default function ProjectDetails({
   // Memoized calculations
   const totalMilestoneWeightage = useMemo(() => {
     return milestones.reduce((sum, m) => sum + (m.weightage || 0), 0);
+  }, [milestones]);
+
+  const projectProgress = useMemo(() => {
+    return calculateProjectProgress(milestones);
   }, [milestones]);
 
   const getTotalMilestoneWeightage = useCallback(() => {
@@ -368,7 +372,7 @@ export default function ProjectDetails({
 
   const onMilestoneStatusUpdate = async (milestoneId: number, updatedMilestoneData: Milestone) => {
     try {
-      await updateMilestoneStatus(milestoneId, updatedMilestoneData, projectDetails?.progress || 0);
+      await updateMilestoneStatus(milestoneId, updatedMilestoneData);
       toast.success("Milestone status updated!");
       fetchMilestonesByProjectId(projectId);
       fetchProjectDetails(projectId);
@@ -475,7 +479,7 @@ export default function ProjectDetails({
                   <InfoRow
                     icon={<Clock size={16} />}
                     label="Progress"
-                    value={`${projectDetails.progress || 0}%`}
+                    value={`${projectProgress}%`}
                   />
 
                   <InfoRow

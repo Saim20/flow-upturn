@@ -321,13 +321,13 @@ export interface ProjectExportOptions {
   includeDescription?: boolean;
   includeDates?: boolean;
   includeStatus?: boolean;
-  includeProgress?: boolean;
+  includeProgress?: boolean; // Progress calculated from milestones, may not be present
   includeGoal?: boolean;
   includeAssignees?: boolean;
 }
 
 export function exportProjectsToCSV(
-  projects: Project[],
+  projects: (Project & { progress?: number })[],
   options: ProjectExportOptions = {}
 ): void {
   const {
@@ -367,7 +367,7 @@ export function exportProjectsToCSV(
       row.push(formatDateForCSV(project.end_date));
     }
     if (includeStatus) row.push(project.status || "");
-    if (includeProgress) row.push(project.progress?.toString() || "0");
+    if (includeProgress) row.push(project.progress !== undefined ? project.progress.toString() : "0");
     if (includeGoal) row.push(project.goal || "");
     if (includeAssignees) {
       const assigneesList = Array.isArray(project.assignees) 
