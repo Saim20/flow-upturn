@@ -60,9 +60,9 @@ export default function SettlementRequestsPage() {
     fetchClaimTypes();
   }, [fetchClaimTypes]);
 
-  const handleUpdateRequest = async (action: string, id: number) => {
+  const handleUpdateRequest = async (action: string, id: number, claimantId: string) => {
     setCurrentlyProcessingId(id);
-    const success = await updateSettlementRequest(action, id, comment);
+    const success = await updateSettlementRequest(action, id, comment, claimantId);
     if (success) {
       toast.success(`Settlement request ${action.toLowerCase()} successfully`);
       setComment("");
@@ -101,8 +101,8 @@ export default function SettlementRequestsPage() {
             claimTypes={claimTypes}
             comment={comment}
             setComment={setComment}
-            onApprove={() => handleUpdateRequest("Approved", settlement.id)}
-            onReject={() => handleUpdateRequest("Rejected", settlement.id)}
+            onApprove={() => handleUpdateRequest("Approved", settlement.id, settlement.claimant_id)}
+            onReject={() => handleUpdateRequest("Rejected", settlement.id, settlement.claimant_id)}
             isProcessing={currentlyProcessingId === settlement.id}
           />
         ))

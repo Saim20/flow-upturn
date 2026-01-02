@@ -184,6 +184,7 @@ export default function TeamDetailPage() {
         .from("employees")
         .select("id, first_name, last_name, email, designation")
         .eq("company_id", companyId)
+        .in("job_status", ['Active', 'Probation']) // Only active employees can be assigned to teams
         .order("first_name");
 
       if (error) throw error;
@@ -582,7 +583,7 @@ export default function TeamDetailPage() {
             </div>
           </div>
           
-          {/* FloppyDisk/Reset buttons */}
+          {/* Save/Reset buttons */}
           <div className="flex items-center gap-2">
             {permissionsDirty && (
               <motion.div

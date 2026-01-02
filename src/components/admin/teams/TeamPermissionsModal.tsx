@@ -389,7 +389,7 @@ export default function TeamPermissionsModal({
               className="flex items-center gap-2 px-6 py-2.5 bg-linear-to-r from-primary-600 to-purple-600 text-white rounded-lg hover:from-primary-700 hover:to-purple-700 active:scale-[0.98] transition-all disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg"
             >
               <FloppyDisk size={20} />
-              {isSaving ? 'Saving...' : 'FloppyDisk Permissions'}
+              {isSaving ? 'Saving...' : 'Save Permissions'}
             </button>
           </div>
         </div>

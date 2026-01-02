@@ -14,7 +14,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
  * 3. Update the service's last_billed_date and next_billing_date
  */
 
-serve(async (_req) => {
+serve(async (_req: Request) => {
   // Placeholder - not yet implemented
   console.log("[auto-create-stakeholder-invoices] Function not yet implemented");
   

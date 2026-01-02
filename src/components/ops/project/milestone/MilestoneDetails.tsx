@@ -14,6 +14,9 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { getCompanyId, getEmployeeId } from "@/lib/utils/auth";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/ui/Card";
+import { useAuth } from "@/lib/auth/auth-context";
+import { captureSupabaseError } from "@/lib/sentry";
+import { PERMISSION_MODULES } from "@/lib/constants";
 
 // Allow partial employee objects with at minimum id and name
 type EmployeeBasic = Pick<Employee, 'id' | 'name'> & Partial<Employee>;
@@ -65,6 +68,11 @@ export default function MilestoneDetails({
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const { createTask, updateTask, deleteTask } = useTasks();
   const [taskDetailsId, setTaskDetailsId] = useState<string | null>(null);
+  const { canWrite, canDelete } = useAuth();
+
+  // Permission checks
+  const canWriteTasks = canWrite(PERMISSION_MODULES.TASKS);
+  const canDeleteTasks = canDelete(PERMISSION_MODULES.TASKS);
 
   const [userId, setUserId] = useState<string>("")
 
@@ -80,22 +88,43 @@ export default function MilestoneDetails({
 
   const handleCreateTask = async (values: any) => {
     try {
-      await createTask(values);
+      const result = await createTask(values);
+      
+      if (!result || !result.success) {
+        const errorMessage = result?.error && typeof result.error === 'object' && 'message' in result.error 
+          ? (result.error as { message: string }).message 
+          : "Failed to create task";
+        toast.error(errorMessage);
+        return;
+      }
+      
       setIsCreatingTask(false);
       fetchTasksByMilestoneId(milestoneId);
-    } catch {
-      alert("Error creating Task.");
+      toast.success("Task created successfully!");
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("Error creating task");
     }
   };
 
   const handleUpdateTask = async (values: any) => {
     try {
-      await updateTask(values);
+      const result = await updateTask(values);
+      
+      if (!result || !result.success) {
+        const errorMessage = result?.error && typeof result.error === 'object' && 'message' in result.error 
+          ? (result.error as { message: string }).message 
+          : "Failed to update task";
+        toast.error(errorMessage);
+        return;
+      }
+      
       setSelectedTask(null);
       fetchTasksByMilestoneId(milestoneId);
-      toast.success("Task updated successfully")
-    } catch {
-      alert("Error updating Task.");
+      toast.success("Task updated successfully!");
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast.error("Error updating task");
     }
   };
 
@@ -104,8 +133,13 @@ export default function MilestoneDetails({
       await deleteTask(id);
       fetchTasksByMilestoneId(milestoneId);
       toast.success("Task deleted successfully")
-    } catch {
-      alert("Error deleting Task.");
+    } catch (error) {
+      toast.error("Error deleting task");
+      captureSupabaseError(
+        { message: error instanceof Error ? error.message : String(error) },
+        "handleDeleteTask",
+        { taskId: id, milestoneId }
+      );
     }
   };
 
@@ -128,14 +162,18 @@ export default function MilestoneDetails({
 
       if (error) {
         setError("Error fetching Milestone details");
-        console.error(error);
+        captureSupabaseError(error, "fetchMilestoneDetails", { milestoneId: id, companyId: company_id });
         return;
       }
 
       setMilestoneDetails(data[0]);
     } catch (error) {
       setError("Error fetching Milestone details");
-      console.error(error);
+      captureSupabaseError(
+        { message: error instanceof Error ? error.message : String(error) },
+        "fetchMilestoneDetails",
+        { milestoneId: id }
+      );
     } finally {
       setLoading(false);
     }
@@ -151,11 +189,12 @@ export default function MilestoneDetails({
         .from("task_records")
         .select("*")
         .eq("milestone_id", id)
-        .eq("company_id", company_id);
+        .eq("company_id", company_id)
+        .order("created_at", { ascending: true });
 
       if (error) {
         setError("Error fetching tasks");
-        console.error(error);
+        captureSupabaseError(error, "fetchTasksByMilestoneId", { milestoneId: id, companyId: company_id });
         return;
       }
 
@@ -167,7 +206,11 @@ export default function MilestoneDetails({
       setTasks(formatData);
     } catch (error) {
       setError("Error fetching tasks");
-      console.error(error);
+      captureSupabaseError(
+        { message: error instanceof Error ? error.message : String(error) },
+        "fetchTasksByMilestoneId",
+        { milestoneId: id }
+      );
     } finally {
       setLoadingTasks(false);
     }
@@ -203,7 +246,7 @@ export default function MilestoneDetails({
         <div className="w-full p-4 sm:p-6 lg:p-10 text-foreground-primary">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
-              <Target size={24} className="text-foreground-secondary" strokeWidth={2} />
+              <Target size={24} className="text-foreground-secondary" weight="regular" />
               <h2 className="text-xl md:text-2xl font-semibold">
                 Milestone Details
               </h2>
@@ -215,7 +258,7 @@ export default function MilestoneDetails({
               onClick={onClose}
               className="flex items-center gap-2 px-4 py-2 bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary rounded-md hover:bg-surface-hover transition-colors duration-150"
             >
-              <CaretLeft size={16} strokeWidth={2} />
+              <CaretLeft size={16} weight="regular" />
               Back
             </motion.button>
           </div>
@@ -263,14 +306,14 @@ export default function MilestoneDetails({
 
             <div className="flex gap-6 pt-4 text-sm border-t border-border-primary">
               <div className="flex items-center gap-2 text-foreground-secondary">
-                <Calendar size={16} strokeWidth={2} />
+                <Calendar size={16} weight="regular" />
                 <span>
                   <span className="font-medium">Start:</span>{" "}
                   {formatDate(milestoneDetails?.start_date || "")}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-foreground-secondary">
-                <Calendar size={16} strokeWidth={2} />
+                <Calendar size={16} weight="regular" />
                 <span>
                   <span className="font-medium">End:</span>{" "}
                   {formatDate(milestoneDetails?.end_date || "")}
@@ -293,22 +336,22 @@ export default function MilestoneDetails({
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <Target size={20} className="text-foreground-secondary" strokeWidth={2} />
+                <Target size={20} className="text-foreground-secondary" weight="regular" />
                 <h3 className="text-lg font-semibold">Task List</h3>
               </div>
 
-              {project_created_by === userId && (
+              {canWriteTasks && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setIsCreatingTask(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 transition-colors duration-150 shadow-sm"
+                  aria-label="Add new task"
+                  className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors duration-150 shadow-sm"
                 >
-                  <Plus size={16} strokeWidth={2.5} />
+                  <Plus size={16} weight="bold" />
                   Add Task
                 </motion.button>
-
               )}
             </div>
 
@@ -326,35 +369,38 @@ export default function MilestoneDetails({
                       {task.task_title}
                     </div>
                     <div className="flex justify-end items-center gap-2">
-                      {project_created_by === userId && (
-                        <>
-
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => task.id !== null && handleDisplayUpdateTaskModal(task.id!)}
-                            className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:bg-surface-secondary rounded-full transition-colors duration-150"
-                          >
-                            <Pencil size={15} strokeWidth={2} />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => task.id !== null && handleDeleteTask(task.id!)}
-                            className="p-1.5 text-foreground-secondary hover:text-error hover:bg-error/10 dark:hover:bg-error/20 rounded-full transition-colors duration-150"
-                          >
-                            <TrashSimple size={15} strokeWidth={2} />
-                          </motion.button>
-                        </>
+                      {canWriteTasks && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          aria-label="Edit task"
+                          onClick={() => task.id !== null && handleDisplayUpdateTaskModal(task.id!)}
+                          className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150"
+                        >
+                          <Pencil size={15} weight="regular" />
+                        </motion.button>
+                      )}
+                      
+                      {canDeleteTasks && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          aria-label="Delete task"
+                          onClick={() => task.id !== null && handleDeleteTask(task.id!)}
+                          className="p-1.5 text-foreground-secondary hover:text-error hover:bg-error/10 dark:hover:bg-error/20 rounded-full transition-colors duration-150"
+                        >
+                          <TrashSimple size={15} weight="regular" />
+                        </motion.button>
                       )}
 
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
+                        aria-label="View task details"
                         onClick={() => task.id !== null && setTaskDetailsId(task.id!)}
-                        className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:bg-surface-secondary rounded-full transition-colors duration-150 ml-2"
+                        className="p-1.5 text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary rounded-full transition-colors duration-150 ml-2"
                       >
-                        <ArrowUpRight size={15} strokeWidth={2} />
+                        <ArrowUpRight size={15} weight="regular" />
                       </motion.button>
                     </div>
                   </motion.div>
@@ -365,7 +411,7 @@ export default function MilestoneDetails({
                 </div>
               ) : (
                 <div className="col-span-3 flex flex-col items-center justify-center h-32 text-foreground-tertiary">
-                  <Target size={32} strokeWidth={1.5} className="mb-3 text-foreground-tertiary" />
+                  <Target size={32} weight="thin" className="mb-3 text-foreground-tertiary" />
                   <p>No tasks found</p>
                 </div>
               )}
@@ -376,6 +422,7 @@ export default function MilestoneDetails({
             <TaskCreateModal
               projectId={milestoneDetails?.project_id ?? ""}
               milestoneId={milestoneId}
+              milestoneTitle={milestoneDetails?.milestone_title}
               onClose={() => setIsCreatingTask(false)}
               onSubmit={handleCreateTask}
             />
@@ -395,6 +442,7 @@ export default function MilestoneDetails({
                 milestone_id: selectedTask.milestone_id,
                 assignees: selectedTask.assignees,
               }}
+              milestoneTitle={milestoneDetails?.milestone_title}
               onClose={() => setSelectedTask(null)}
               onSubmit={handleUpdateTask}
             />

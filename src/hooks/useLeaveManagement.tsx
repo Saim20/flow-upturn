@@ -9,6 +9,9 @@ import { useNotifications } from "./useNotifications";
 import { HolidayConfig, LeaveType } from "@/lib/types";
 import { usePermissions } from "./usePermissions";
 import { captureSupabaseError } from "@/lib/sentry";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
+import { checkUserEmailPreference } from "./useEmailPreferences";
+import { createLeaveRequestNotification } from "@/lib/utils/notifications";
 
 
 export type { LeaveType, HolidayConfig };
@@ -63,7 +66,7 @@ export function useLeaveRequests() {
   const { createNotification } = useNotifications();
   const { canApprove, isSupervisorOf, getSubordinates } = usePermissions();
 
-  // Create leave request (same as before)
+  // Create leave request - auto-approve if no supervisor
   const createLeaveRequest = async (leaveData: any) => {
     if (!employeeInfo) {
       console.warn('Cannot create leave request: Employee info not available');
@@ -71,19 +74,49 @@ export function useLeaveRequests() {
     }
 
     try {
-      const result = await baseResult.createItem(leaveData);
+      // Check if employee has a supervisor - check both employeeInfo and the data being passed
+      // This handles cases where the data might be fresher than the context
+      const hasSupervisor = !!employeeInfo.supervisor_id || !!leaveData.requested_to;
+      
+      // If no supervisor, auto-approve the leave request
+      const finalLeaveData = hasSupervisor 
+        ? leaveData 
+        : { ...leaveData, status: 'Accepted' };
 
-      const recipients = [employeeInfo.supervisor_id].filter(Boolean) as string[];
-      createNotification({
-        title: "New Leave Request",
-        message: `A new leave request has been submitted by ${employeeInfo.name}.`,
-        priority: "normal",
-        type_id: 2,
-        recipient_id: recipients,
-        action_url: "/ops/leave",
-        company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
-        department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
-      });
+      const result = await baseResult.createItem(finalLeaveData);
+
+      if (hasSupervisor) {
+        // Normal flow: notify supervisor for approval
+        const recipients = [employeeInfo.supervisor_id].filter(Boolean) as string[];
+        createNotification({
+          title: "New Leave Request",
+          message: `A new leave request has been submitted by ${employeeInfo.name}.`,
+          priority: "normal",
+          type_id: 2,
+          recipient_id: recipients,
+          action_url: "/ops/leave",
+          company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
+          department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+        });
+      } else {
+        // Auto-approved: reduce leave balance and notify the employee
+        if (result?.data?.[0]) {
+          const leaveRecord = result.data[0];
+          
+          // Reduce leave balance for auto-approved leave
+          const parseDate = (str: string) => new Date(str.replace(" ", "T"));
+          const start = parseDate(leaveData.start_date);
+          const end = parseDate(leaveData.end_date);
+          const diffInDays =
+            Math.floor(
+              (Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
+                Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
+                (1000 * 60 * 60 * 24)
+            ) + 1;
+
+          await reduceBalance(employeeInfo.id, leaveData.type_id, diffInDays);
+        }
+      }
 
       return result;
     } catch (error) {
@@ -122,7 +155,21 @@ export function useLeaveRequests() {
 
       const result = await baseResult.updateItem(leaveId, leaveData);
 
-      const recipients = [employeeId].filter(Boolean) as string[];
+      // Fetch employee and leave type details for notification
+      const { data: empData } = await supabase
+        .from("employees")
+        .select("first_name, last_name, email, users!inner(id)")
+        .eq("id", employeeId)
+        .single();
+
+      const { data: leaveTypeData } = await supabase
+        .from("leave_types")
+        .select("name")
+        .eq("id", leaveTypeId)
+        .single();
+
+      const employeeName = empData ? `${empData.first_name} ${empData.last_name}` : "Employee";
+      const leaveTypeName = leaveTypeData?.name || "Leave";
 
       if (leaveData.status === "Accepted") {
         const parseDate = (str: string) => new Date(str.replace(" ", "T"));
@@ -137,18 +184,106 @@ export function useLeaveRequests() {
           ) + 1;
 
         await reduceBalance(employeeId, leaveTypeId, diffInDays);
-      }
 
-      createNotification({
-        title: "Leave request updated",
-        message: `Your leave request has been updated to status: ${leaveData.status}.`,
-        priority: "normal",
-        type_id: 2,
-        recipient_id: recipients,
-        action_url: "/ops/leave",
-        company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
-        department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
-      });
+        // Send approval notification
+        const users = empData?.users as any;
+        const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+        
+        if (userId) {
+          try {
+            await createLeaveRequestNotification(
+              userId,
+              'approved',
+              {
+                leaveType: leaveTypeName,
+                startDate: start_date,
+                endDate: end_date,
+              },
+              {
+                referenceId: leaveId,
+                actionUrl: '/ops/leave',
+              }
+            );
+          } catch (notifError) {
+            console.error("Failed to send leave approval notification:", notifError);
+          }
+        }
+
+        // Send approval email
+        if (empData?.email && userId) {
+          try {
+            const canSendEmail = await checkUserEmailPreference(userId, 'leave_approval');
+            if (canSendEmail) {
+              await sendNotificationEmailAction({
+                recipientEmail: empData.email,
+                recipientName: employeeName,
+                title: `Leave Request Approved: ${leaveTypeName}`,
+                message: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} has been approved.\n\nEnjoy your time off!`,
+                priority: 'normal',
+                actionUrl: `/ops/leave`,
+                context: 'leave',
+              });
+            }
+          } catch (emailError) {
+            console.error("Failed to send leave approval email:", emailError);
+          }
+        }
+      } else if (leaveData.status === "Rejected") {
+        // Send rejection notification
+        const users = empData?.users as any;
+        const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+        
+        if (userId) {
+          try {
+            await createLeaveRequestNotification(
+              userId,
+              'rejected',
+              {
+                leaveType: leaveTypeName,
+                reason: leaveData.remarks || "No reason provided",
+              },
+              {
+                referenceId: leaveId,
+                actionUrl: '/ops/leave',
+              }
+            );
+          } catch (notifError) {
+            console.error("Failed to send leave rejection notification:", notifError);
+          }
+        }
+
+        // Send rejection email
+        if (empData?.email && userId) {
+          try {
+            const canSendEmail = await checkUserEmailPreference(userId, 'leave_rejection');
+            if (canSendEmail) {
+              await sendNotificationEmailAction({
+                recipientEmail: empData.email,
+                recipientName: employeeName,
+                title: `Leave Request Not Approved: ${leaveTypeName}`,
+                message: `Dear ${employeeName},\n\nYour ${leaveTypeName.toLowerCase()} leave request from ${start_date} to ${end_date} was not approved.\n\n${leaveData.remarks ? `Reason: ${leaveData.remarks}` : ""}\n\nPlease contact your supervisor if you have any questions.`,
+                priority: 'normal',
+                actionUrl: `/ops/leave`,
+                context: 'leave',
+              });
+            }
+          } catch (emailError) {
+            console.error("Failed to send leave rejection email:", emailError);
+          }
+        }
+      } else {
+        // Generic status update notification (for Pending status revert)
+        createNotification({
+          title: "Leave request updated",
+          message: `Your leave request has been updated to status: ${leaveData.status}.`,
+          priority: "normal",
+          type_id: 2,
+          recipient_id: [employeeId].filter(Boolean) as string[],
+          action_url: "/ops/leave",
+          company_id: typeof employeeInfo.company_id === 'string' ? parseInt(employeeInfo.company_id) : employeeInfo.company_id!,
+          department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+        });
+      }
 
       return result;
     } catch (error) {

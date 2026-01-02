@@ -73,7 +73,6 @@ export const ClaimTypeCreateModal: React.FC<ClaimTypeCreateModalProps> = ({
             required
             min={1}
             placeholder="Enter allowance amount"
-            icon={<CurrencyDollar size={18} weight="duotone" className="text-foreground-tertiary" />}
           />
 
           <SingleEmployeeSelector
@@ -93,10 +92,13 @@ export const ClaimTypeCreateModal: React.FC<ClaimTypeCreateModalProps> = ({
             onChange={handleChange}
             error={errors.settlement_level_id}
             placeholder="Select Settlement Level"
-            options={allPositions.map(position => ({
-              value: String(position.id),
-              label: position.name
-            }))}
+            options={[
+              { value: '', label: 'None' },
+              ...allPositions.map(position => ({
+                value: String(position.id),
+                label: position.name
+              }))
+            ]}
           />
         </>
       )}

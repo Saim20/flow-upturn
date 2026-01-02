@@ -5,10 +5,15 @@ export interface NotificationEmailData {
   recipientName?: string;
   title: string;
   message: string;
-  priority: 'high' | 'urgent';
+  priority: 'high' | 'urgent' | 'normal';
   actionUrl?: string;
   context?: string;
+  // If true, skip preference check (for mandatory emails like onboarding)
+  skipPreferenceCheck?: boolean;
 }
+
+// Base URL for the application (used for unsubscribe links)
+const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.flowhris.com';
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -25,11 +30,66 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Generate the unsubscribe section for emails
+ */
+function generateUnsubscribeSection(skipPreferenceCheck?: boolean): string {
+  if (skipPreferenceCheck) {
+    // For mandatory emails (onboarding, offboarding, reactivation)
+    return `
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+            This is an automated notification from Flow HRIS. Please do not reply to this email.
+          </p>
+          <p style="margin: 8px 0 0 0; color: #9ca3af; font-size: 11px;">
+            This is a required system notification and cannot be unsubscribed.
+          </p>
+        </div>
+    `;
+  }
+  
+  return `
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+            This is an automated notification from Flow HRIS. Please do not reply to this email.
+          </p>
+          <p style="margin: 8px 0 0 0; color: #9ca3af; font-size: 11px;">
+            Don't want to receive these emails? 
+            <a href="${APP_BASE_URL}/profile/settings?tab=notifications" style="color: #6b7280; text-decoration: underline;">
+              Manage your email preferences
+            </a>
+          </p>
+        </div>
+  `;
+}
+
+/**
+ * Generate plain text unsubscribe section
+ */
+function generateUnsubscribeText(skipPreferenceCheck?: boolean): string {
+  if (skipPreferenceCheck) {
+    return `---\nThis is an automated notification from Flow HRIS. Please do not reply to this email.\nThis is a required system notification and cannot be unsubscribed.`;
+  }
+  
+  return `---\nThis is an automated notification from Flow HRIS. Please do not reply to this email.\n\nDon't want to receive these emails? Manage your preferences: ${APP_BASE_URL}/profile/settings?tab=notifications`;
+}
+
+/**
  * Generate HTML content for a notification email
  */
 function generateNotificationEmailHtml(data: NotificationEmailData): string {
-  const priorityColor = data.priority === 'urgent' ? '#dc2626' : '#ea580c';
-  const priorityLabel = data.priority === 'urgent' ? 'Urgent' : 'High Priority';
+  const priorityColors: Record<string, string> = {
+    urgent: '#dc2626',
+    high: '#ea580c',
+    normal: '#2563eb',
+  };
+  const priorityLabels: Record<string, string> = {
+    urgent: 'Urgent',
+    high: 'High Priority',
+    normal: 'Notification',
+  };
+  
+  const priorityColor = priorityColors[data.priority] || priorityColors.normal;
+  const priorityLabel = priorityLabels[data.priority] || priorityLabels.normal;
   
   // Escape user-provided content
   const safeTitle = escapeHtml(data.title);
@@ -77,12 +137,8 @@ function generateNotificationEmailHtml(data: NotificationEmailData): string {
         </div>
         ` : ''}
         
-        <!-- Footer -->
-        <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
-          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This is an automated notification from Flow HRIS. Please do not reply to this email.
-          </p>
-        </div>
+        <!-- Footer with Unsubscribe -->
+        ${generateUnsubscribeSection(data.skipPreferenceCheck)}
       </td>
     </tr>
   </table>
@@ -95,9 +151,15 @@ function generateNotificationEmailHtml(data: NotificationEmailData): string {
  * Generate plain text content for a notification email
  */
 function generateNotificationEmailText(data: NotificationEmailData): string {
-  const priorityLabel = data.priority === 'urgent' ? '[URGENT]' : '[HIGH PRIORITY]';
+  const priorityLabels: Record<string, string> = {
+    urgent: '[URGENT]',
+    high: '[HIGH PRIORITY]',
+    normal: '',
+  };
   
-  let text = `${priorityLabel}\n\n`;
+  const priorityLabel = priorityLabels[data.priority] || '';
+  
+  let text = priorityLabel ? `${priorityLabel}\n\n` : '';
   
   if (data.recipientName) {
     text += `Hi ${data.recipientName},\n\n`;
@@ -110,7 +172,7 @@ function generateNotificationEmailText(data: NotificationEmailData): string {
     text += `View Details: ${data.actionUrl}\n\n`;
   }
   
-  text += `---\nThis is an automated notification from Flow HRIS. Please do not reply to this email.`;
+  text += generateUnsubscribeText(data.skipPreferenceCheck);
   
   return text;
 }
@@ -123,9 +185,18 @@ function generateNotificationEmailText(data: NotificationEmailData): string {
 export async function sendNotificationEmail(
   data: NotificationEmailData
 ): Promise<EmailResponse> {
-  const subject = data.priority === 'urgent' 
-    ? `🚨 Urgent: ${data.title}`
-    : `⚠️ ${data.title}`;
+  let subject: string;
+  
+  switch (data.priority) {
+    case 'urgent':
+      subject = `🚨 Urgent: ${data.title}`;
+      break;
+    case 'high':
+      subject = `⚠️ ${data.title}`;
+      break;
+    default:
+      subject = data.title;
+  }
     
   return sendEmail({
     to: data.recipientEmail,

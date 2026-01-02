@@ -58,7 +58,8 @@ export async function getDepartmentEmployeesIds(department_id: number) {
   let query = supabase
     .from("employees")
     .select("id")
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .in("job_status", ['Active', 'Probation']); // Only active employees
 
   if (department_id !== 0) {
     query = query.eq("department_id", department_id);

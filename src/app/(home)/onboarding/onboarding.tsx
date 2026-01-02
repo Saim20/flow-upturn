@@ -64,17 +64,17 @@ export default function EmployeeOnboarding() {
   const [companyCode, setCompanyCode] = useState("");
   const [userId, setUserId] = useState<string>("");
   const [activeSection, setActiveSection] = useState("company");
-  
+
   // Device info state - collected automatically for seamless onboarding
   const [deviceInfo, setDeviceInfo] = useState<DeviceDetails | null>(null);
   const [deviceId, setDeviceId] = useState<string>("");
 
-  const { 
-    validateCompanyCode, 
+  const {
+    validateCompanyCode,
     companyId,
     companyName: validatedCompanyName,
   } = useCompanyValidation();
-  
+
   // State for employees and departments fetched via API (bypasses RLS)
   const [employees, setEmployees] = useState<OnboardingEmployee[]>([]);
   const [departments, setDepartments] = useState<OnboardingDepartment[]>([]);
@@ -87,7 +87,7 @@ export default function EmployeeOnboarding() {
         `/api/onboarding/employees?companyId=${companyIdToFetch}&includeDepartments=true`
       );
       const data = await response.json();
-      
+
       if (response.ok) {
         setEmployees(data.employees || []);
         setDepartments(data.departments || []);
@@ -105,11 +105,11 @@ export default function EmployeeOnboarding() {
       const id = getDeviceId();
       const details = getDeviceDetails();
       const location = await getUserLocation();
-      
+
       setDeviceId(id);
       setDeviceInfo({ ...details, location });
     };
-    
+
     collectDeviceInfo();
   }, []);
 
@@ -117,7 +117,7 @@ export default function EmployeeOnboarding() {
     console.log(departments, "Departments fetched in onboarding");
     console.log(employees, "Employees fetched in onboarding");
   }, [departments, employees]);
-    
+
 
 
   useEffect(() => {
@@ -137,7 +137,7 @@ export default function EmployeeOnboarding() {
             setIsCompanyCodeValid(true);
             setFormData(formatted);
             setActiveSection("personal");
-            
+
             // Fetch departments and employees via API
             await fetchOnboardingData(userInfo.userData.company_id);
           }
@@ -146,7 +146,7 @@ export default function EmployeeOnboarding() {
         } finally {
           setLoading(false);
         }
-      } else{
+      } else {
         const user = await getUser();
         if (user) {
           setFormData((prev) => ({
@@ -164,7 +164,7 @@ export default function EmployeeOnboarding() {
   useEffect(() => {
     if (isCompanyCodeValid && formData.company_id) {
       fetchOnboardingData(formData.company_id);
-      getEmployeeId().then(id => setUserId(id)).catch(() => {});
+      getEmployeeId().then(id => setUserId(id)).catch(() => { });
     }
   }, [isCompanyCodeValid, formData.company_id, fetchOnboardingData]);
 
@@ -195,11 +195,11 @@ export default function EmployeeOnboarding() {
       [name]: name === "department_id" ? (value ? parseInt(value) : null) : value,
     }));
     setDirty(true);
-    
+
     // Clear error for the field being changed
     if (errors[name]) {
       setErrors(prev => {
-        const newErrors = {...prev};
+        const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
@@ -215,10 +215,10 @@ export default function EmployeeOnboarding() {
         setErrors(errorMap);
         return;
       }
-      
+
       setErrors({});
       setLoading(true);
-      
+
       // Include device info with the onboarding submission
       await submitOnboarding({
         ...result.data!,
@@ -241,9 +241,9 @@ export default function EmployeeOnboarding() {
         // Check if it's a duplicate email error
         const errorMessage = err.message || "Something went wrong. Please try again later.";
         if (errorMessage.includes("email") && errorMessage.includes("already")) {
-          setErrors({ 
+          setErrors({
             email: errorMessage,
-            submit: "Please correct the errors above and try again." 
+            submit: "Please correct the errors above and try again."
           });
         } else {
           setErrors({ submit: errorMessage });
@@ -257,18 +257,18 @@ export default function EmployeeOnboarding() {
   const handleValidateCompanyCode = async () => {
     try {
       setVerifyLoading(true);
-      
+
       const result = await validateCompanyCode(companyCode);
-      
+
       if (result.isValid && result.id !== null) {
         setIsCompanyCodeValid(true);
-        setFormData((prev) => ({ 
-          ...prev, 
+        setFormData((prev) => ({
+          ...prev,
           company_id: result.id || 0,
           company_name: result.name || ""
         }));
         setActiveSection("personal");
-        
+
         // Fetch departments and employees for the validated company
         if (result.id) {
           // await fetchDepartmentsData();
@@ -278,28 +278,28 @@ export default function EmployeeOnboarding() {
       } else {
         setIsCompanyCodeValid(false);
         setVerifyLoading(false);
-        setErrors({ 
-          company_code: result.error || "Invalid company code. Please check and try again." 
+        setErrors({
+          company_code: result.error || "Invalid company code. Please check and try again."
         });
       }
     } catch (error) {
       console.error("Error verifying company code:", error);
       setIsCompanyCodeValid(false);
       setVerifyLoading(false);
-      setErrors({ 
-        company_code: "Failed to verify company code. Please try again." 
+      setErrors({
+        company_code: "Failed to verify company code. Please try again."
       });
     }
   };
 
   if (status === "pending") {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="w-full min-h-screen bg-background-primary flex items-center justify-center p-6"
       >
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3 }}
@@ -311,28 +311,28 @@ export default function EmployeeOnboarding() {
               Application Pending
             </h2>
           </div>
-          
+
           <div className="p-6">
             <div className="flex items-center justify-center mb-6">
               <div className="w-24 h-24 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
                 <Clock className="h-12 w-12 text-primary-600" />
               </div>
             </div>
-            
+
             <h3 className="text-xl font-semibold text-center text-foreground-primary mb-4">Your information is being reviewed</h3>
-            
+
             <p className="text-foreground-secondary text-center mb-6">
               Thank you for submitting your details. Your application is currently under review by the administrative team.
               You will be notified once the review process is complete.
             </p>
-            
+
             <div className="bg-info/10 dark:bg-info/20 p-4 rounded-lg border border-info/30 mb-6">
               <p className="text-sm text-info flex items-start">
                 <WarningCircle size={16} className="mr-2 mt-0.5 shrink-0" />
                 If you have any questions about your application status, please contact your supervisor or the HR department.
               </p>
             </div>
-            
+
             <div className="flex justify-center">
               <button
                 onClick={logout}
@@ -349,14 +349,14 @@ export default function EmployeeOnboarding() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="w-full min-h-screen bg-background-primary py-10 px-4 sm:px-6"
     >
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <motion.div 
+        <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
@@ -369,7 +369,7 @@ export default function EmployeeOnboarding() {
         </motion.div>
 
         {/* Progress Steps */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { delay: 0.2 } }}
           className="mb-10 hidden sm:block"
@@ -377,9 +377,8 @@ export default function EmployeeOnboarding() {
           <div className="flex items-center justify-center">
             <div className="relative">
               <div className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  activeSection === "company" ? "bg-primary-600" : isCompanyCodeValid ? "bg-success" : "bg-foreground-tertiary/50"
-                } text-white font-medium`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeSection === "company" ? "bg-primary-600" : isCompanyCodeValid ? "bg-success" : "bg-foreground-tertiary/50"
+                  } text-white font-medium`}>
                   {isCompanyCodeValid ? <CheckCircle size={18} /> : 1}
                 </div>
                 <div className={`h-1 w-20 sm:w-32 ${isCompanyCodeValid ? "bg-success" : "bg-foreground-tertiary/30"}`}></div>
@@ -391,9 +390,8 @@ export default function EmployeeOnboarding() {
 
             <div className="relative">
               <div className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  activeSection === "personal" ? "bg-primary-600" : "bg-foreground-tertiary/50"
-                } text-white font-medium`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeSection === "personal" ? "bg-primary-600" : "bg-foreground-tertiary/50"
+                  } text-white font-medium`}>
                   2
                 </div>
                 <div className="h-1 w-20 sm:w-32 bg-foreground-tertiary/30"></div>
@@ -418,7 +416,7 @@ export default function EmployeeOnboarding() {
 
         {/* Rejected Notice */}
         {status === "rejected" && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="mb-8 bg-error/10 border-l-4 border-error dark:bg-error/20 p-4 rounded-md shadow-sm"
@@ -442,7 +440,7 @@ export default function EmployeeOnboarding() {
         )}
 
         {/* Logout Button */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="mb-4 flex justify-end"
@@ -474,8 +472,8 @@ export default function EmployeeOnboarding() {
                     <Building className="h-6 w-6 text-primary-600 mr-2" />
                     <h2 className="text-xl font-semibold text-foreground-primary">Company Information</h2>
                   </div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     variants={staggerContainer}
                     initial="hidden"
                     animate="visible"
@@ -490,7 +488,7 @@ export default function EmployeeOnboarding() {
                       readOnly={!!status || isCompanyCodeValid}
                       error={errors.company_code}
                     />
-                    
+
                     {/* Show company name after successful validation */}
                     {isCompanyCodeValid && formData.company_name && (
                       <FormInputField
@@ -502,8 +500,8 @@ export default function EmployeeOnboarding() {
                         readOnly={true}
                       />
                     )}
-                    
-                    <motion.div 
+
+                    <motion.div
                       variants={fadeInUp}
                       className="flex justify-center mt-8"
                     >
@@ -554,8 +552,8 @@ export default function EmployeeOnboarding() {
                     <User className="h-6 w-6 text-primary-600 mr-2" />
                     <h2 className="text-xl font-semibold text-foreground-primary">Personal Information</h2>
                   </div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     variants={staggerContainer}
                     initial="hidden"
                     animate="visible"
@@ -578,7 +576,7 @@ export default function EmployeeOnboarding() {
                         error={errors.last_name}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
                       <FormInputField
                         name="email"
@@ -598,7 +596,7 @@ export default function EmployeeOnboarding() {
                         error={errors.phone_number}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
                       <FormSelectField
                         name="department_id"
@@ -612,7 +610,7 @@ export default function EmployeeOnboarding() {
                         onChange={handleChange}
                         error={errors.department_id}
                       />
-                      
+
                       <FormInputField
                         name="designation"
                         label="Designation"
@@ -622,7 +620,7 @@ export default function EmployeeOnboarding() {
                         error={errors.designation}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
                       <FormSelectField
                         name="job_status"
@@ -634,7 +632,7 @@ export default function EmployeeOnboarding() {
                         onChange={handleChange}
                         error={errors.job_status}
                       />
-                      
+
                       <FormInputField
                         name="hire_date"
                         label="Joining Date"
@@ -645,7 +643,7 @@ export default function EmployeeOnboarding() {
                         error={errors.hire_date}
                       />
                     </div>
-                    
+
                     <SingleEmployeeSelector
                       value={formData.supervisor_id || ""}
                       onChange={(value) => {
@@ -665,10 +663,10 @@ export default function EmployeeOnboarding() {
                       placeholder="Search and select supervisor..."
                       error={errors.supervisor_id}
                     />
-                    
+
                     {/* Device Information Section */}
                     {deviceInfo && (
-                      <motion.div 
+                      <motion.div
                         variants={fadeInUp}
                         className="mt-6 p-4 bg-primary-50 dark:bg-primary-950/30 rounded-lg border border-primary-200 dark:border-primary-800"
                       >
@@ -701,11 +699,11 @@ export default function EmployeeOnboarding() {
                         </div>
                       </motion.div>
                     )}
-                    
-                    <motion.div 
+
+                    <motion.div
                       variants={fadeInUp}
                       className="flex justify-end mt-8"
-                    >                      
+                    >
                       <button
                         type="submit"
                         disabled={loading || (status === "rejected" && !dirty)}
@@ -729,9 +727,9 @@ export default function EmployeeOnboarding() {
                         )}
                       </button>
                     </motion.div>
-                    
+
                     {errors.submit && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-4 p-3 bg-error/10 border border-error/30 dark:bg-error/20 rounded-md text-error text-sm"

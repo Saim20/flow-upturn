@@ -280,7 +280,7 @@ export default function AttendanceLogsPage() {
             >
               <X size={20} />
             </button>
-            <h2 className="text-lg font-semibold mb-4">PencilSimple Attendance</h2>
+            <h2 className="text-lg font-semibold mb-4">Edit Attendance</h2>
 
             <div className="flex flex-col gap-3">
               <label className="flex flex-col">
@@ -319,7 +319,7 @@ export default function AttendanceLogsPage() {
 
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="secondary" onClick={() => setSelectedAttendance(null)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSave}>FloppyDisk</Button>
+                <Button variant="primary" onClick={handleSave}>Save</Button>
               </div>
             </div>
           </div>

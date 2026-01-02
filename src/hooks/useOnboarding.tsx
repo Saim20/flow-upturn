@@ -285,6 +285,19 @@ export function useOnboarding() {
         throw new Error("Invalid action");
       }
 
+      // Get employee details first for notifications
+      const { data: employeeData, error: fetchError } = await supabase
+        .from("employees")
+        .select("first_name, last_name, email, company_id")
+        .eq("id", employeeId)
+        .single();
+
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+
+      const employeeName = `${employeeData.first_name} ${employeeData.last_name}`;
+
       // Update employee approval status
       const { data: updateData, error: updateError } = await supabase
         .from("employees")
@@ -314,7 +327,48 @@ export function useOnboarding() {
         }
       }
 
-      // Note: supervisor relationship is now stored directly in employees.supervisor_id (FK)
+      // Send notification to the employee
+      try {
+        const { createOnboardingNotification } = await import('@/lib/utils/notifications');
+        
+        if (action === "ACCEPTED") {
+          await createOnboardingNotification(
+            employeeId,
+            'approved',
+            { employeeName },
+            { actionUrl: '/home' }
+          );
+        } else {
+          await createOnboardingNotification(
+            employeeId,
+            'rejected',
+            { employeeName, reason },
+            { actionUrl: '/onboarding' }
+          );
+        }
+
+        // Send email (mandatory - no preference check)
+        const { sendNotificationEmailAction } = await import('@/lib/actions/email-actions');
+        
+        if (employeeData.email) {
+          await sendNotificationEmailAction({
+            recipientEmail: employeeData.email,
+            recipientName: employeeName,
+            title: action === "ACCEPTED" 
+              ? "Welcome to the Team!" 
+              : "Account Application Update",
+            message: action === "ACCEPTED"
+              ? `Hi ${employeeName}, your account has been approved! You can now log in and access all features of the system.`
+              : `Hi ${employeeName}, your account application was not approved.${reason ? ` Reason: ${reason}` : ''} Please contact HR for more information.`,
+            priority: 'high',
+            actionUrl: action === "ACCEPTED" ? '/home' : undefined,
+            skipPreferenceCheck: true, // Onboarding emails are mandatory
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error sending onboarding notification:", notificationError);
+        // Don't fail the main action for notification errors
+      }
 
       // Remove from pending list in local state
       setPendingEmployees(prev => prev.filter(emp => emp.id !== employeeId));
@@ -363,7 +417,7 @@ export function useOnboarding() {
           .from("employees")
           .select("has_approval, rejection_reason")
           .eq("id", userId)
-          .single();
+          .maybeSingle();
 
         if (!error && data && callback) {
           callback({ new: data });

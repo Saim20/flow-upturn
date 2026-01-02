@@ -596,7 +596,7 @@ export default function RequisitionCreatePage({
             className="flex items-center gap-2 bg-background-tertiary dark:bg-surface-secondary text-foreground-secondary px-6 py-2 rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             <FloppyDisk size={18} />
-            <span>FloppyDisk as Draft</span>
+            <span>Save as Draft</span>
           </motion.button>
 
           <motion.button
@@ -1097,7 +1097,7 @@ export function RequisitionDraftPage({
             onClick={handleSaveDraft}
             className="bg-[#001F4D] text-white px-6 py-2 rounded-full hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Submitting..." : "FloppyDisk as Draft"}
+            {isSubmitting ? "Submitting..." : "Save as Draft"}
           </button>
           <button
             type="submit"

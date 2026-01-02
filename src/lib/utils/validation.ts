@@ -16,19 +16,117 @@ export interface ValidationResult {
 }
 
 /**
+ * Maps technical field names to user-friendly labels
+ */
+const FIELD_LABELS: Record<string, string> = {
+  // Common fields
+  name: 'Name',
+  description: 'Description',
+  email: 'Email',
+  phone_number: 'Phone number',
+  
+  // ID fields - these should show the entity name, not the ID
+  head_id: 'Head',
+  position_id: 'Position',
+  department_id: 'Department',
+  division_id: 'Division',
+  grade_id: 'Grade',
+  grade: 'Grade',
+  project_id: 'Project',
+  company_id: 'Company',
+  employee_id: 'Employee',
+  supervisor_id: 'Supervisor',
+  approved_by_id: 'Approver',
+  requested_to: 'Requested to',
+  complainer_id: 'Complainer',
+  commenter_id: 'Commenter',
+  settler_id: 'Settler',
+  project_lead_id: 'Project lead',
+  against_whom: 'Person complained against',
+  notice_type_id: 'Notice type',
+  industry_id: 'Industry',
+  country_id: 'Country',
+  asset_owner: 'Asset owner',
+  
+  // Date fields
+  from_date: 'From date',
+  to_date: 'To date',
+  start_date: 'Start date',
+  end_date: 'End date',
+  hire_date: 'Hire date',
+  event_date: 'Event date',
+  attendance_date: 'Attendance date',
+  date: 'Date',
+  valid_from: 'Valid from',
+  valid_till: 'Valid till',
+  fiscal_year_start: 'Fiscal year start',
+  
+  // Other common fields
+  first_name: 'First name',
+  last_name: 'Last name',
+  company_name: 'Company name',
+  designation: 'Designation',
+  job_status: 'Job status',
+  hierarchical_level: 'Hierarchical level',
+  check_in: 'Check-in time',
+  check_out: 'Check-out time',
+  location: 'Location',
+  longitude: 'Longitude',
+  latitude: 'Latitude',
+  annual_quota: 'Annual quota',
+  quantity: 'Quantity',
+  allowance: 'Allowance',
+  amount: 'Amount',
+  weightage: 'Weightage',
+  status: 'Status',
+  priority: 'Priority',
+  tag: 'Tag',
+  urgency: 'Urgency',
+  type: 'Type',
+  title: 'Title',
+  result: 'Result',
+  institute: 'Institute',
+  remarks: 'Remarks',
+  comment: 'Comment',
+  settlement_item: 'Settlement item',
+  project_title: 'Project title',
+  milestone_title: 'Milestone title',
+  task_title: 'Task title',
+  department_ids: 'Departments',
+  id_input: 'Employee ID',
+  basic_salary: 'Basic salary',
+  live_absent_enabled: 'Live absent tracking',
+  live_payroll_enabled: 'Live payroll',
+  payroll_generation_day: 'Payroll generation day',
+};
+
+/**
+ * Gets a user-friendly label for a field name
+ */
+function getFieldLabel(fieldName: string): string {
+  if (FIELD_LABELS[fieldName]) {
+    return FIELD_LABELS[fieldName];
+  }
+  // Fallback: convert snake_case to Title Case
+  return fieldName
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Helper function to validate string length
  */
 function validateStringLength(value: any, fieldName: string, min?: number, max?: number): ValidationError | null {
-  // Capitalize the field name for better error messages
-  const formattedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+  const label = getFieldLabel(fieldName);
   if (typeof value !== 'string') {
-    return { field: fieldName, message: `${formattedFieldName} must be a string` };
+    return { field: fieldName, message: `${label} must be a string` };
   }
   if (min !== undefined && value.trim().length < min) {
-    return { field: fieldName, message: min === 1 ? `${formattedFieldName} is required` : `${formattedFieldName} must be at least ${min} characters` };
+    return { field: fieldName, message: min === 1 ? `${label} is required` : `${label} must be at least ${min} characters` };
   }
   if (max !== undefined && value.length > max) {
-    return { field: fieldName, message: `${formattedFieldName} must be ${max} characters or fewer` };
+    return { field: fieldName, message: `${label} must be ${max} characters or fewer` };
   }
   return null;
 }
@@ -37,14 +135,15 @@ function validateStringLength(value: any, fieldName: string, min?: number, max?:
  * Helper function to validate numbers
  */
 function validateNumber(value: any, fieldName: string, min?: number, max?: number): ValidationError | null {
+  const label = getFieldLabel(fieldName);
   if (typeof value !== 'number' || isNaN(value)) {
-    return { field: fieldName, message: `${fieldName} must be a valid number` };
+    return { field: fieldName, message: `${label} must be a valid number` };
   }
   if (min !== undefined && value < min) {
-    return { field: fieldName, message: `${fieldName} must be at least ${min}` };
+    return { field: fieldName, message: `${label} must be at least ${min}` };
   }
   if (max !== undefined && value > max) {
-    return { field: fieldName, message: `${fieldName} must be at most ${max}` };
+    return { field: fieldName, message: `${label} must be at most ${max}` };
   }
   return null;
 }
@@ -53,11 +152,12 @@ function validateNumber(value: any, fieldName: string, min?: number, max?: numbe
  * Helper function to validate dates
  */
 function validateDate(value: any, fieldName: string): ValidationError | null {
+  const label = getFieldLabel(fieldName);
   if (!value || typeof value !== 'string') {
-    return { field: fieldName, message: `${fieldName} is required` };
+    return { field: fieldName, message: `${label} is required` };
   }
   if (isNaN(Date.parse(value))) {
-    return { field: fieldName, message: `Invalid ${fieldName}` };
+    return { field: fieldName, message: `Please enter a valid ${label.toLowerCase()}` };
   }
   return null;
 }
@@ -66,13 +166,14 @@ function validateDate(value: any, fieldName: string): ValidationError | null {
  * Helper function to validate UUID
  */
 function validateUUID(value: any, fieldName: string, optional = true): ValidationError | null {
+  const label = getFieldLabel(fieldName);
   if (optional && (!value || value === '')) return null;
   if (!value || typeof value !== 'string') {
-    return { field: fieldName, message: `${fieldName} is required` };
+    return { field: fieldName, message: `${label} is required` };
   }
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(value)) {
-    return { field: fieldName, message: `${fieldName} must be a valid UUID` };
+    return { field: fieldName, message: `Please select a valid ${label.toLowerCase()}` };
   }
   return null;
 }
@@ -225,11 +326,11 @@ export function validateLineage(lineage: any): ValidationResult {
 
   if (!lineage.hierarchical_level || typeof lineage.hierarchical_level !== 'number' ||
     !Number.isInteger(lineage.hierarchical_level) || lineage.hierarchical_level < 1) {
-    errors.push({ field: 'hierarchical_level', message: 'hierarchical_level must be a positive integer' });
+    errors.push({ field: 'hierarchical_level', message: 'Hierarchical level must be a positive integer' });
   }
 
   if (!lineage.position_id || typeof lineage.position_id !== 'number') {
-    errors.push({ field: 'position_id', message: 'position_id is required' });
+    errors.push({ field: 'position_id', message: 'Position is required' });
   }
 
   return {
@@ -443,7 +544,7 @@ export function validateProject(project: any): ValidationResult {
   if (
     !Array.isArray(project.department_ids) ||
     project.department_ids.length === 0 ||
-    project.department_ids.some((id:number) => id === 0)
+    project.department_ids.some((id: number) => id === 0)
   ) {
     errors.push({
       field: 'department_ids',
@@ -501,11 +602,11 @@ export function validateComment(comment: any): ValidationResult {
   const errors: ValidationError[] = [];
 
   if (!comment.comment || typeof comment.comment !== 'string' || comment.comment.trim().length === 0) {
-    errors.push({ field: 'comment', message: 'Please enter a valid comment' });
+    errors.push({ field: 'comment', message: 'Please enter a comment' });
   }
 
   if (!comment.commenter_id || typeof comment.commenter_id !== 'string') {
-    errors.push({ field: 'commenter_id', message: 'Commenter ID is required' });
+    errors.push({ field: 'commenter_id', message: 'Commenter is required' });
   }
 
   return {
@@ -522,7 +623,7 @@ export function validateTask(task: any): ValidationResult {
   const errors: ValidationError[] = [];
 
   if (!task.task_title || typeof task.task_title !== 'string' || task.task_title.trim().length === 0) {
-    errors.push({ field: 'task_title', message: 'Title is required' });
+    errors.push({ field: 'task_title', message: 'Task title is required' });
   }
 
   if (!task.start_date || typeof task.start_date !== 'string' || task.start_date.trim().length === 0) {
@@ -538,7 +639,7 @@ export function validateTask(task: any): ValidationResult {
   }
 
   if (!task.project_id || typeof task.project_id !== 'number') {
-    errors.push({ field: 'project_id', message: 'Project ID is required' });
+    errors.push({ field: 'project_id', message: 'Project is required' });
   }
 
   return {
@@ -611,7 +712,7 @@ export function validateComplaintRecord(complaint: any): ValidationResult {
   const errors: ValidationError[] = [];
 
   if (!complaint.complainer_id || typeof complaint.complainer_id !== 'string') {
-    errors.push({ field: 'complainer_id', message: 'Complainer ID is required' });
+    errors.push({ field: 'complainer_id', message: 'Complainer is required' });
   }
 
   if (!complaint.description || typeof complaint.description !== 'string' || complaint.description.trim().length === 0) {
@@ -675,8 +776,9 @@ export function validateDivision(division: any): ValidationResult {
   const nameError = validateStringLength(division.name, 'name', 1, 50);
   if (nameError) errors.push(nameError);
 
-  const headIdError = validateStringLength(division.head_id, 'head_id', 1);
-  if (headIdError) errors.push(headIdError);
+  if (!division.head_id || typeof division.head_id !== 'string' || division.head_id.trim().length === 0) {
+    errors.push({ field: 'head_id', message: 'Head is required' });
+  }
 
   return {
     success: errors.length === 0,
@@ -695,8 +797,9 @@ export function validateDepartment(department: any, hasDept: boolean): Validatio
   if (nameError) errors.push(nameError);
 
   // head_id is required
-  const headIdError = validateStringLength(department.head_id, 'head_id', 1);
-  if (headIdError) errors.push(headIdError);
+  if (!department.head_id || typeof department.head_id !== 'string' || department.head_id.trim().length === 0) {
+    errors.push({ field: 'head_id', message: 'Head is required' });
+  }
 
   // description is optional
   if (department.description && department.description.trim()) {
@@ -728,22 +831,24 @@ export function validatePosition(position: any): ValidationResult {
   const nameError = validateStringLength(position.name, 'name', 1, 50);
   if (nameError) errors.push(nameError);
 
+  // department_id is optional - only validate if provided
   if (
-    position.department_id === null ||
-    position.department_id === undefined ||
-    (typeof position.department_id !== "number") ||
-    isNaN(position.department_id)
+    position.department_id !== null &&
+    position.department_id !== undefined &&
+    position.department_id !== "" &&
+    (typeof position.department_id !== "number" || isNaN(position.department_id))
   ) {
-    errors.push({ field: "department_id", message: "Department is required" });
+    errors.push({ field: "department_id", message: "Invalid department" });
   }
 
+  // grade is optional - only validate if provided
   if (
-    position.grade === null ||
-    position.grade === undefined ||
-    (typeof position.grade !== "number") ||
-    isNaN(position.grade)
+    position.grade !== null &&
+    position.grade !== undefined &&
+    position.grade !== "" &&
+    (typeof position.grade !== "number" || isNaN(position.grade))
   ) {
-    errors.push({ field: "grade", message: "Grade is required" });
+    errors.push({ field: "grade", message: "Invalid grade" });
   }
 
   return {
@@ -908,9 +1013,9 @@ export function validateOnboardingForm(formData: any): ValidationResult {
   const phoneError = validateStringLength(formData.phone_number, 'phone_number', 1);
   if (phoneError) errors.push(phoneError);
 
-  if (!formData.department_id || (typeof formData.department_id !== 'number' && isNaN(Number(formData.department_id)))) {
-    errors.push({ field: 'department_id', message: 'Department is required' });
-  }
+  // if (!formData.department_id || (typeof formData.department_id !== 'number' && isNaN(Number(formData.department_id)))) {
+  //   errors.push({ field: 'department_id', message: 'Department is required' });
+  // }
 
   const designationError = validateStringLength(formData.designation, 'designation', 1);
   if (designationError) errors.push(designationError);
@@ -928,7 +1033,7 @@ export function validateOnboardingForm(formData: any): ValidationResult {
   if (companyNameError) errors.push(companyNameError);
 
   if (typeof formData.company_id !== 'number' || formData.company_id < 0) {
-    errors.push({ field: 'company_id', message: 'Company ID is required' });
+    errors.push({ field: 'company_id', message: 'Company is required' });
   }
 
   return {

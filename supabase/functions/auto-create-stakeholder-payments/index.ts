@@ -158,7 +158,7 @@ function formatDateISO(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   try {
     // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

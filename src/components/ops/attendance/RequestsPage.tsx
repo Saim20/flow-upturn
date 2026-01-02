@@ -18,7 +18,7 @@ import { ModalActionButtons } from "@/components/ui";
 import { toast } from "sonner";
 import LoadingSection from "@/app/(home)/home/components/LoadingSection";
 import { getEmployeeInfo } from "@/lib/utils/auth";
-import { useNotifications } from "@/hooks/useNotifications";
+import { createAttendanceRequestNotification } from "@/lib/utils/notifications";
 
 interface AttendanceRequest {
   id: number;
@@ -50,8 +50,6 @@ export default function AttendanceRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<AttendanceRequest | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const { createNotification } = useNotifications();
 
   async function fetchRequestsData() {
     setLoading(true);
@@ -131,17 +129,39 @@ export default function AttendanceRequestsPage() {
       }
       // If rejected, leave the tag as is (Late or Wrong_Location)
 
-      const recipients = [selectedRequest.employee_id].filter(Boolean) as string[];
-      createNotification({
-        title: "Attendance Request Updated",
-        message: `Your ${selectedRequest.request_type === 'late' ? 'late arrival' : 'wrong location'} request has been ${updateStatus}.`,
-        priority: 'normal',
-        type_id: 5,
-        recipient_id: recipients,
-        action_url: '/ops/attendance',
-        company_id: user.company_id,
-        department_id: user.department_id
-      });
+      // Send notification to the employee about the decision
+      try {
+        const requestType = selectedRequest.request_type === 'late' ? 'late arrival' : 'wrong location';
+        const notificationType = updateStatus === 'approved' ? 'requestApproved' : 'requestRejected';
+        
+        // Get the employee's user_id for notification
+        const { data: empData } = await supabase
+          .from("employees")
+          .select("users(id)")
+          .eq("id", selectedRequest.employee_id)
+          .single();
+
+        if (empData?.users) {
+          const users = empData.users as any;
+          const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+          
+          if (userId) {
+            await createAttendanceRequestNotification(
+              userId,
+              notificationType,
+              {
+                requestType,
+                date: formatDateToDayMonth(selectedRequest.attendance_record.attendance_date),
+              },
+              {
+                actionUrl: '/ops/attendance',
+              }
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error("Failed to send notification:", notifError);
+      }
 
       toast.success("Attendance request updated successfully");
       fetchRequestsData();

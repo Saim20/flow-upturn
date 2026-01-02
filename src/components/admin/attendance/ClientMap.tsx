@@ -7,9 +7,11 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import L from "leaflet";
 import { InlineSpinner } from "@/components/ui";
+import { MagnifyingGlass, MapPin, X, CircleNotch } from "@phosphor-icons/react";
 
 type Coordinates = {
   lat: number;
@@ -27,23 +29,64 @@ interface ClientMapProps {
   value: Coordinates;
   onChange: (coords: Coordinates) => void;
   type: string;
+  hideSearch?: boolean;
 }
 
 const DEFAULT_POSITION: Coordinates = { lat: 51.505, lng: -0.09 };
-
-function debounce<T extends (...args: any[]) => void>(func: T, delay: number) {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<T>) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-}
 
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
+
+// Portal component for dropdown to escape modal overflow constraints
+const SearchDropdownPortal: React.FC<{
+  children: React.ReactNode;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  show: boolean;
+}> = ({ children, inputRef, show }) => {
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+
+  useEffect(() => {
+    if (show && inputRef.current) {
+      const updatePosition = () => {
+        const rect = inputRef.current!.getBoundingClientRect();
+        setPosition({
+          top: rect.bottom + window.scrollY + 4,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      };
+      updatePosition();
+      
+      // Update position on scroll/resize
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [show, inputRef]);
+
+  if (!show || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      style={{
+        position: 'absolute',
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        zIndex: 99999,
+      }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
 
 const MapController = ({ setMap }: { setMap: (map: L.Map) => void }) => {
   const map = useMap();
@@ -79,53 +122,84 @@ const LocationMarker = ({
   return null;
 };
 
-export default function ClientMap({ value, onChange, type }: ClientMapProps) {
+export default function ClientMap({ value, onChange, type, hideSearch = false }: ClientMapProps) {
   const [coordinates, setCoordinates] = useState<Coordinates>(value);
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [map, setMap] = useState<L.Map | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchSuggestions = debounce(async (query: string) => {
-    if (!query.trim()) {
+  // Debounced search function using refs to avoid recreation on each render
+  const handleSearchChange = useCallback((query: string) => {
+    setSearch(query);
+    
+    // Clear any pending request
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    if (!query.trim() || query.length < 3) {
       setSuggestions([]);
+      setShowSuggestions(false);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          query
-        )}&addressdetails=1&limit=10`
-      );
-      let data: Suggestion[] = await res.json();
+    
+    debounceTimerRef.current = setTimeout(async () => {
+      abortControllerRef.current = new AbortController();
+      
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            query
+          )}&addressdetails=1&limit=10`,
+          { signal: abortControllerRef.current.signal }
+        );
+        let data: Suggestion[] = await res.json();
 
-      if (userLocation) {
-        data = data
-          .map((s) => ({
-            ...s,
-            distance: Math.sqrt(
-              Math.pow(parseFloat(s.lat) - userLocation.lat, 2) +
-                Math.pow(parseFloat(s.lon) - userLocation.lng, 2)
-            ),
-          }))
-          .sort((a, b) => a.distance! - b.distance!);
+        if (userLocation) {
+          data = data
+            .map((s) => ({
+              ...s,
+              distance: Math.sqrt(
+                Math.pow(parseFloat(s.lat) - userLocation.lat, 2) +
+                  Math.pow(parseFloat(s.lon) - userLocation.lng, 2)
+              ),
+            }))
+            .sort((a, b) => a.distance! - b.distance!);
+        }
+
+        const results = data.slice(0, 5);
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error("Suggestion error:", error);
+        }
+      } finally {
+        setLoading(false);
       }
+    }, 500);
+  }, [userLocation]);
 
-      setSuggestions(data.slice(0, 5));
-    } catch (error) {
-      console.error("Suggestion error:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, 2500);
-
+  // Cleanup on unmount
   useEffect(() => {
-    fetchSuggestions(search);
-  }, [search]);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (type === "create") {
@@ -153,7 +227,7 @@ export default function ClientMap({ value, onChange, type }: ClientMapProps) {
         dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node)
       ) {
-        setSuggestions([]);
+        setShowSuggestions(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -165,7 +239,15 @@ export default function ClientMap({ value, onChange, type }: ClientMapProps) {
     setCoordinates(newCoords);
     setSearch(s.display_name);
     setSuggestions([]);
+    setShowSuggestions(false);
     onChange(newCoords);
+  };
+
+  const clearSearch = () => {
+    setSearch("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
   };
 
   useEffect(() => {
@@ -181,38 +263,63 @@ export default function ClientMap({ value, onChange, type }: ClientMapProps) {
   }, [value]);
 
   return (
-    <div className="w-full space-y-4 relative mt-4">
-      <div ref={dropdownRef} className="relative">
-        <label className="block font-semibold text-blue-800 mb-1">
-          Location
-        </label>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search for a location..."
-          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
-        {loading && (
-          <div className="absolute right-3 top-2.5">
-            <InlineSpinner size="sm" color="primary" />
-          </div>
-        )}
-
-        {suggestions.length > 0 && (
-          <ul className="absolute z-10 mt-1 w-full bg-surface-primary border rounded-md shadow-lg max-h-60 overflow-auto">
-            {suggestions.map((s, idx) => (
-              <li
-                key={idx}
-                onClick={() => handleSelectSuggestion(s)}
-                className="px-4 py-2 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm"
+    <div className={`w-full ${hideSearch ? '' : 'space-y-4'} relative ${hideSearch ? '' : 'mt-4'}`}>
+      {!hideSearch && (
+        <div ref={dropdownRef} className="relative">
+          <label className="block font-semibold text-foreground-secondary mb-1">
+            Location
+          </label>
+          <div className="relative">
+            <MagnifyingGlass 
+              size={18} 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-tertiary" 
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              placeholder="Search for a location..."
+              className="w-full pl-10 pr-10 py-2.5 border border-border-secondary rounded-lg bg-background-primary text-foreground-primary focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder:text-foreground-tertiary"
+            />
+            {loading && (
+              <CircleNotch 
+                size={18} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-500 animate-spin" 
+              />
+            )}
+            {!loading && search && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-tertiary hover:text-foreground-secondary transition-colors"
               >
-                {s.display_name}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                <X size={18} />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown rendered via Portal to escape modal overflow */}
+          <SearchDropdownPortal inputRef={inputRef} show={showSuggestions && suggestions.length > 0}>
+            <ul className="bg-surface-primary border border-border-secondary rounded-lg shadow-xl max-h-60 overflow-auto">
+              {suggestions.map((s, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => handleSelectSuggestion(s)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm text-foreground-primary border-b border-border-secondary last:border-b-0 transition-colors"
+                >
+                  <div className="flex items-start gap-2">
+                    <MapPin size={16} className="text-primary-500 mt-0.5 shrink-0" />
+                    <span className="line-clamp-2">{s.display_name}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </SearchDropdownPortal>
+        </div>
+      )}
 
       <MapContainer
         center={coordinates ?? DEFAULT_POSITION}

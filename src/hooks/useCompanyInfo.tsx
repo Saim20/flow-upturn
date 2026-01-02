@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { getCompanyInfo as getCompanyInfoApi, updateCompanySettings as updateCompanySettingsApi } from "@/lib/utils/auth";
+import { getCompanyId, getCompanyInfo as getCompanyInfoApi, updateCompanySettings as updateCompanySettingsApi } from "@/lib/utils/auth";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Employee } from "@/lib/types/schemas";
@@ -44,42 +44,47 @@ export function useCompanyInfo() {
     setLoading(true);
     setError(null);
     try {
+      const companyId = await getCompanyId();
       // Fetch all data in parallel
       const [companyResult, countriesResult, industriesResult, employeesResult] = await Promise.all([
         getCompanyInfoApi(),
         supabase.from('countries').select('id, name').order('name'),
         supabase.from('industries').select('id, name').order('name'),
-        supabase.from('employees').select('id, first_name, last_name, email, designation, department_id(name)').then(res => {
-          if (res.error) {
-            console.error('Failed to fetch employees:', res.error);
-            return [];
-          }
-          return (res.data || []).map(emp => ({
-            id: emp.id,
-            name: `${emp.first_name} ${emp.last_name}`,
-            email: emp.email,
-            designation: emp.designation || undefined,
-            department: (emp.department_id as unknown as { name: string })?.name || undefined
-          }));
-        })
+        supabase.from('employees')
+          .select('id, first_name, last_name, email, designation, department_id(name)')
+          .eq('company_id', companyId)
+          .in('job_status', ['Active', 'Probation']) // Only active employees
+          .then(res => {
+            if (res.error) {
+              console.error('Failed to fetch employees:', res.error);
+              return [];
+            }
+            return (res.data || []).map(emp => ({
+              id: emp.id,
+              name: `${emp.first_name} ${emp.last_name}`,
+              email: emp.email,
+              designation: emp.designation || undefined,
+              department: (emp.department_id as unknown as { name: string })?.name || undefined
+            }));
+          })
       ]);
-      
+
       setCompanyInfo(companyResult);
-      
+
       if (countriesResult.error) {
         console.error('Failed to fetch countries:', countriesResult.error);
       } else {
         setCountries(countriesResult.data || []);
       }
-      
+
       if (industriesResult.error) {
         console.error('Failed to fetch industries:', industriesResult.error);
       } else {
         setIndustries(industriesResult.data || []);
       }
-      
+
       setEmployees(employeesResult);
-      
+
       return companyResult;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch company info";
@@ -103,10 +108,10 @@ export function useCompanyInfo() {
   }) => {
     try {
       await updateCompanySettingsApi(settings);
-      
+
       // Update local state
       setCompanyInfo(prev => prev ? { ...prev, ...settings } : null);
-      
+
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update company settings";

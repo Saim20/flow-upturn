@@ -10,6 +10,7 @@ import { useTasks } from '@/hooks/useTasks';
 
 interface TaskCreateModalProps {
   milestoneId?: number;
+  milestoneTitle?: string;
   projectId?: string;
   departmentId?: number;
   onSubmit: (data: TaskData) => void;
@@ -26,6 +27,7 @@ const priorityOptions = [
 
 export default function TaskCreateModal({
   milestoneId,
+  milestoneTitle,
   projectId,
   departmentId,
   onSubmit,
@@ -77,6 +79,7 @@ export default function TaskCreateModal({
       const validation = validateTask(formData);
 
       if (!validation.success && validation.errors) {
+        console.log('Validation failed:', validation.errors);
         const errorMap: Record<string, string> = {};
         validation.errors.forEach(error => {
           errorMap[error.field] = error.message;
@@ -86,8 +89,11 @@ export default function TaskCreateModal({
       }
 
       if (validation.success && validation.data) {
+        console.log('Submitting task:', validation.data);
         await onSubmit(validation.data); // wait until finished
       }
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
     } finally {
       setLoading(false); // always reset
     }
@@ -171,7 +177,7 @@ export default function TaskCreateModal({
         {milestoneId && (
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <p className="text-sm text-primary-800">
-              <strong>Note:</strong> This task will be associated with milestone ID: {milestoneId}
+              <strong>Note:</strong> This task will be associated with milestone: <span className="font-semibold">{milestoneTitle || `ID ${milestoneId}`}</span>
             </p>
           </div>
         )}

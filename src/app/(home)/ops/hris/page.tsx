@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, User, Envelope, Phone, Building, Calendar, FunnelSimple, Download, UserCircle } from "@phosphor-icons/react";
+import { Users, User, Envelope, Phone, Building, Calendar, FunnelSimple, Download, UserCircle, UserMinus, ArrowCounterClockwise } from "@phosphor-icons/react";
 import SearchBar from "@/components/ui/SearchBar";
 import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -12,8 +12,10 @@ import { ExtendedEmployee, useEmployees } from "@/hooks/useEmployees";
 import { matchesEmployeeSearch } from "@/lib/utils/user-search";
 import { exportEmployeesToCSV } from "@/lib/utils/csv-export";
 import { toast } from "sonner";
-import { ModulePermissionsBanner } from "@/components/permissions";
-import { PERMISSION_MODULES } from "@/lib/constants";
+import { ModulePermissionsBanner, PermissionGate } from "@/components/permissions";
+import { PERMISSION_MODULES, JOB_STATUS } from "@/lib/constants";
+import { useOffboarding } from "@/hooks/useOffboarding";
+import { StatusBadge } from "@/components/ui/Card";
 
 // FunnelSimple options
 type FilterOptions = {
@@ -21,9 +23,15 @@ type FilterOptions = {
   designation: string;
 };
 
+type TabType = "active" | "offboarded";
+
 export default function FinderPage() {
+  const [activeTab, setActiveTab] = useState<TabType>("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredEmployees, setFilteredEmployees] = useState<
+    ExtendedEmployee[]
+  >([]);
+  const [filteredOffboardedEmployees, setFilteredOffboardedEmployees] = useState<
     ExtendedEmployee[]
   >([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -32,11 +40,13 @@ export default function FinderPage() {
     designation: "",
   });
 
-  const { extendedEmployees, loading, fetchExtendedEmployees } = useEmployees();
+  const { extendedEmployees, offboardedEmployees, loading, fetchExtendedEmployees, fetchOffboardedEmployees } = useEmployees();
+  const { reactivateEmployee, loading: offboardingLoading } = useOffboarding();
 
   useEffect(() => {
     fetchExtendedEmployees();
-  }, [fetchExtendedEmployees]);
+    fetchOffboardedEmployees();
+  }, [fetchExtendedEmployees, fetchOffboardedEmployees]);
 
   useEffect(() => {
     if (extendedEmployees.length === 0) return;
@@ -64,9 +74,37 @@ export default function FinderPage() {
     setFilteredEmployees(filtered);
   }, [searchQuery, filters, extendedEmployees]);
 
+  // Filter offboarded employees
+  useEffect(() => {
+    if (offboardedEmployees.length === 0) {
+      setFilteredOffboardedEmployees([]);
+      return;
+    }
 
-  const departments = [...new Set(extendedEmployees.map((e) => e.department))];
-  const positions = [...new Set(extendedEmployees.map((e) => e.designation))];
+    const filtered = offboardedEmployees.filter((employee) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        matchesEmployeeSearch(employee, searchQuery) ||
+        employee.department?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      const matchesDepartment =
+        filters.department === "" || employee.department === filters.department;
+
+      const matchesDesignation =
+        filters.designation === "" || employee.designation === filters.designation;
+
+      return matchesDepartment && matchesDesignation;
+    });
+
+    setFilteredOffboardedEmployees(filtered);
+  }, [searchQuery, filters, offboardedEmployees]);
+
+  // Combine all employees for filter options
+  const allEmployees = [...extendedEmployees, ...offboardedEmployees];
+  const departments = [...new Set(allEmployees.map((e) => e.department).filter(Boolean))];
+  const positions = [...new Set(allEmployees.map((e) => e.designation).filter(Boolean))];
 
   const formatDate = (dateString: string) => {
     try {
@@ -82,13 +120,14 @@ export default function FinderPage() {
   };
 
   const handleExportCSV = () => {
-    if (filteredEmployees.length === 0) {
+    const employeesToExport = activeTab === "active" ? filteredEmployees : filteredOffboardedEmployees;
+    if (employeesToExport.length === 0) {
       toast.error("No employees to export");
       return;
     }
 
     try {
-      exportEmployeesToCSV(filteredEmployees, {
+      exportEmployeesToCSV(employeesToExport, {
         includeEmail: true,
         includePhone: true,
         includeDepartment: true,
@@ -96,12 +135,40 @@ export default function FinderPage() {
         includeJoinDate: true,
         includeSalary: false, // Don't include salary by default
       });
-      toast.success(`Exported ${filteredEmployees.length} employee(s) to CSV`);
+      toast.success(`Exported ${employeesToExport.length} employee(s) to CSV`);
     } catch (error) {
       console.error("Error exporting CSV:", error);
       toast.error("Failed to export data");
     }
   };
+
+  const handleReactivateEmployee = async (employeeId: string) => {
+    try {
+      const result = await reactivateEmployee(employeeId);
+      if (result.success) {
+        toast.success(result.message);
+        // Refresh both lists
+        fetchExtendedEmployees();
+        fetchOffboardedEmployees();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reactivate employee");
+    }
+  };
+
+  const getJobStatusBadge = (status?: string) => {
+    switch (status) {
+      case JOB_STATUS.RESIGNED:
+        return <StatusBadge status="Resigned" variant="warning" />;
+      case JOB_STATUS.TERMINATED:
+        return <StatusBadge status="Terminated" variant="error" />;
+      default:
+        return null;
+    }
+  };
+
+  const displayedEmployees = activeTab === "active" ? filteredEmployees : filteredOffboardedEmployees;
+  const currentCount = activeTab === "active" ? filteredEmployees.length : filteredOffboardedEmployees.length;
 
   return (
     <motion.div
@@ -123,7 +190,7 @@ export default function FinderPage() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleExportCSV}
-          disabled={loading || filteredEmployees.length === 0}
+          disabled={loading || currentCount === 0}
           className="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download size={18} />
@@ -134,11 +201,45 @@ export default function FinderPage() {
       {/* Permission Banner */}
       <ModulePermissionsBanner module={PERMISSION_MODULES.HRIS} title="HRIS" compact />
 
+      {/* Tab Navigation */}
+      <motion.div variants={fadeIn} className="mb-6">
+        <div className="flex space-x-1 bg-surface-secondary rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setActiveTab("active")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === "active"
+                ? "bg-surface-primary text-primary-700 shadow-sm"
+                : "text-foreground-secondary hover:text-foreground-primary"
+            }`}
+          >
+            <Users size={18} />
+            Active Employees
+            <span className="ml-1 px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full text-xs">
+              {extendedEmployees.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("offboarded")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === "offboarded"
+                ? "bg-surface-primary text-warning shadow-sm"
+                : "text-foreground-secondary hover:text-foreground-primary"
+            }`}
+          >
+            <UserMinus size={18} />
+            Offboarded
+            <span className="ml-1 px-2 py-0.5 bg-warning/10 text-warning rounded-full text-xs">
+              {offboardedEmployees.length}
+            </span>
+          </button>
+        </div>
+      </motion.div>
+
       {/* Search and Filters */}
       <motion.div variants={fadeIn} className="bg-surface-primary rounded-xl shadow-sm mb-8">
         <div className="border-b border-border-primary px-6 py-4 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-indigo-700">
-            Search Employees
+            Search {activeTab === "active" ? "Active" : "Offboarded"} Employees
           </h2>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -233,23 +334,26 @@ export default function FinderPage() {
       <motion.div variants={fadeInUp}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-foreground-primary">
-            Results{" "}
-            {filteredEmployees.length > 0 && `(${filteredEmployees.length})`}
+            {activeTab === "active" ? "Active Employees" : "Offboarded Employees"}{" "}
+            {currentCount > 0 && `(${currentCount})`}
           </h2>
         </div>
 
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {loading ? (
             <LoadingSpinner
               text="Loading employee data..."
               height="h-64"
               className="bg-surface-primary rounded-xl shadow-sm"
             />
-          ) : filteredEmployees.length === 0 ? (
+          ) : displayedEmployees.length === 0 ? (
             <EmptyState
-              icon={Users}
-              title="No employees found"
-              description="No employees match your search criteria. Try adjusting your filters or search query."
+              icon={activeTab === "active" ? Users : UserMinus}
+              title={activeTab === "active" ? "No active employees found" : "No offboarded employees found"}
+              description={activeTab === "active" 
+                ? "No active employees match your search criteria. Try adjusting your filters or search query."
+                : "No offboarded employees match your search criteria. Offboarded employees who resigned or were terminated will appear here."
+              }
             />
           ) : (
             <>
@@ -263,13 +367,14 @@ export default function FinderPage() {
                       <th className="px-6 py-3">Phone</th>
                       <th className="px-6 py-3">Department</th>
                       <th className="px-6 py-3">Designation</th>
+                      {activeTab === "offboarded" && <th className="px-6 py-3">Status</th>}
                       <th className="px-6 py-3">Supervisor</th>
                       <th className="px-6 py-3">Join Date</th>
-                      <th className="px-6 py-3 text-center">Profile</th>
+                      <th className="px-6 py-3 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-primary">
-                    {filteredEmployees.map((employee) => (
+                    {displayedEmployees.map((employee) => (
                       <tr
                         key={employee.id}
                         className="hover:bg-background-secondary dark:bg-background-tertiary transition-colors"
@@ -290,6 +395,11 @@ export default function FinderPage() {
                         <td className="px-6 py-3 text-sm text-foreground-secondary">
                           {employee.designation}
                         </td>
+                        {activeTab === "offboarded" && (
+                          <td className="px-6 py-3">
+                            {getJobStatusBadge(employee.job_status)}
+                          </td>
+                        )}
                         <td className="px-6 py-3 text-sm text-foreground-secondary">
                           {employee.supervisor_name || "Not assigned"}
                         </td>
@@ -299,12 +409,27 @@ export default function FinderPage() {
                             : "N/A"}
                         </td>
                         <td className="px-6 py-3 text-center">
-                          <a
-                            href={`/hris?uid=${employee.id}`}
-                            className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
-                          >
-                            View
-                          </a>
+                          <div className="flex items-center justify-center gap-2">
+                            <a
+                              href={`/hris?uid=${employee.id}`}
+                              className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
+                            >
+                              View
+                            </a>
+                            {activeTab === "offboarded" && (
+                              <PermissionGate module={PERMISSION_MODULES.OFFBOARDING} action="write">
+                                <button
+                                  onClick={() => handleReactivateEmployee(employee.id)}
+                                  disabled={offboardingLoading}
+                                  className="flex items-center gap-1 text-success hover:text-success/80 font-medium text-sm disabled:opacity-50"
+                                  title="Reactivate Employee"
+                                >
+                                  <ArrowCounterClockwise size={16} />
+                                  Reactivate
+                                </button>
+                              </PermissionGate>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -314,7 +439,7 @@ export default function FinderPage() {
 
               {/* ✅ Card view for small screens */}
               <div className="grid md:grid-cols-2 sm:grid-cols-1 lg:hidden gap-6">
-                {filteredEmployees.map((employee) => (
+                {displayedEmployees.map((employee) => (
                   <motion.div
                     key={employee.id}
                     variants={fadeIn}
@@ -325,17 +450,24 @@ export default function FinderPage() {
                     }}
                     className="bg-surface-primary rounded-xl shadow-sm overflow-hidden border border-border-primary transition-all duration-200"
                   >
-                    <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white p-4">
-                      <div className="flex items-center">
-                        <div className="w-14 h-14 bg-surface-primary rounded-full flex items-center justify-center text-indigo-600 mr-4">
-                          <User size={28} />
+                    <div className={`${activeTab === "offboarded" ? "bg-gradient-to-r from-warning/80 to-warning" : "bg-gradient-to-r from-indigo-500 to-indigo-600"} text-white p-4`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="w-14 h-14 bg-surface-primary rounded-full flex items-center justify-center text-indigo-600 mr-4">
+                            <User size={28} />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg">{employee.name}</h3>
+                            <p className={`${activeTab === "offboarded" ? "text-white/80" : "text-indigo-100"} text-sm`}>
+                              {employee.designation}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-lg">{employee.name}</h3>
-                          <p className="text-indigo-100 text-sm">
-                            {employee.designation}
-                          </p>
-                        </div>
+                        {activeTab === "offboarded" && (
+                          <span className="px-2 py-1 bg-white/20 rounded text-xs font-medium">
+                            {employee.job_status}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -375,15 +507,29 @@ export default function FinderPage() {
                       </div>
                     </div>
 
-                    <div className="border-t border-border-primary p-4">
+                    <div className="border-t border-border-primary p-4 flex gap-2">
                       <motion.a
                         href={`/hris?uid=${employee.id}`}
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
-                        className="block w-full py-2 text-center text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                        className="flex-1 py-2 text-center text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
                       >
                         View Full Profile
                       </motion.a>
+                      {activeTab === "offboarded" && (
+                        <PermissionGate module={PERMISSION_MODULES.OFFBOARDING} action="write">
+                          <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => handleReactivateEmployee(employee.id)}
+                            disabled={offboardingLoading}
+                            className="flex items-center gap-1 py-2 px-3 text-sm font-medium text-success hover:text-success/80 transition-colors disabled:opacity-50"
+                          >
+                            <ArrowCounterClockwise size={16} />
+                            Reactivate
+                          </motion.button>
+                        </PermissionGate>
+                      )}
                     </div>
                   </motion.div>
                 ))}

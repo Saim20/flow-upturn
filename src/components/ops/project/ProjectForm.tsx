@@ -93,30 +93,18 @@ export default function ProjectForm({
     assignees: [],
   };
 
-  const filteredEmployees = employees.filter(emp => {
-    // Only show employees that belong to the selected departments
-    if (!projectDetails.department_ids || projectDetails.department_ids.length === 0) {
-      return false; // No departments selected, so no employees
-    }
-    
-    const empDeptId = emp.department;
-    if (!empDeptId) {
-      return false; // Employee has no department
-    }
-    
-    // Check if employee's department is in the selected departments
-    return projectDetails.department_ids.some(deptId => String(deptId) === empDeptId);
-  });
+  // Show all active employees in the company (no department filtering)
+  const filteredEmployees = employees;
 
   // Convert projectDetails.assignees (ids) -> employee objects
   const selectedAssigneeObjects: Employee[] = [
     ...(projectDetails.assignees || [])
-      .map(id => filteredEmployees.find(emp => emp.id === id))
+      .map(id => employees.find(emp => emp.id === id))
       .filter((emp): emp is Employee => !!emp),
 
     // add project lead if found
     ...(projectDetails.project_lead_id
-      ? filteredEmployees.filter(emp => emp.id === projectDetails.project_lead_id)
+      ? employees.filter(emp => emp.id === projectDetails.project_lead_id)
       : []),
   ];
 
@@ -549,12 +537,7 @@ export default function ProjectForm({
           employees={filteredEmployees}
           label="Project Lead"
           error={errors.project_lead_id}
-          placeholder={
-            !projectDetails.department_ids || projectDetails.department_ids.length === 0 || projectDetails.department_ids.every(id => id === 0)
-              ? "Select a department first..."
-              : "Search and select project lead..."
-          }
-          disabled={!projectDetails.department_ids || projectDetails.department_ids.length === 0 || projectDetails.department_ids.every(id => id === 0)}
+          placeholder="Search and select project lead..."
           required
         />
       </div>

@@ -92,9 +92,19 @@ export function useProfile() {
     setLoading(true);
     setError(null);
     try {
-      // FunnelSimple out undefined values and empty objects
+      // Fields that can be explicitly set to null
+      const nullableFields = ['supervisor_id'];
+      
+      // Filter out undefined values, but keep null for nullable fields
       const updateData = Object.fromEntries(
-        Object.entries(data).filter(([_, value]) => value !== undefined && value !== null)
+        Object.entries(data).filter(([key, value]) => {
+          // Always filter out undefined
+          if (value === undefined) return false;
+          // Keep null only for nullable fields
+          if (value === null) return nullableFields.includes(key);
+          // Keep all other values
+          return true;
+        })
       );
       
       if (Object.keys(updateData).length === 0) {
@@ -273,7 +283,7 @@ export function useProfile() {
       if (error && error.code === 'PGRST116') {
         const { data: insertResult, error: insertError } = await supabase
           .from('personal_infos')
-          .insert({ id: employeeInfo.id, ...cleanData })
+          .insert({ id: employeeInfo.id, company_id: employeeInfo.company_id, ...cleanData })
           .select()
           .single();
           
@@ -355,12 +365,24 @@ export function useProfile() {
 
   // Education CRUD operations
   const createEducation = useCallback(async (educationData: Omit<Education, "id">) => {
+    if (!employeeInfo) {
+      console.warn('Cannot create education: Employee info not available');
+      return null;
+    }
+
     setLoading(true);
     setError(null);
     try {
+      // Ensure employee_id and company_id are set
+      const dataWithEmployeeId = {
+        ...educationData,
+        employee_id: educationData.employee_id || employeeInfo.id,
+        company_id: employeeInfo.company_id,
+      };
+
       const { data, error } = await supabase
         .from('schoolings')
-        .insert([educationData])
+        .insert([dataWithEmployeeId])
         .select()
         .single();
 
@@ -377,7 +399,7 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [employeeInfo]);
 
   const updateEducation = useCallback(async (id: number, educationData: Partial<Education>) => {
     setLoading(true);
@@ -431,12 +453,24 @@ export function useProfile() {
 
   // Experience CRUD operations
   const createExperience = useCallback(async (experienceData: Omit<Experience, "id">) => {
+    if (!employeeInfo) {
+      console.warn('Cannot create experience: Employee info not available');
+      return null;
+    }
+
     setLoading(true);
     setError(null);
     try {
+      // Ensure employee_id and company_id are set
+      const dataWithEmployeeId = {
+        ...experienceData,
+        employee_id: experienceData.employee_id || employeeInfo.id,
+        company_id: employeeInfo.company_id,
+      };
+
       const { data, error } = await supabase
         .from('experiences')
-        .insert([experienceData])
+        .insert([dataWithEmployeeId])
         .select()
         .single();
 
@@ -453,7 +487,7 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [employeeInfo]);
 
   const updateExperience = useCallback(async (id: number, experienceData: Partial<Experience>) => {
     setLoading(true);

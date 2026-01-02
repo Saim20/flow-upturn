@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { useBaseEntity } from "./core";
 import { Milestone } from "@/lib/types";
+import { createMilestoneNotification } from "@/lib/utils/notifications";
 
 export type { Milestone };
 
@@ -30,9 +31,55 @@ export function useMilestones() {
           console.error("Error updating project progress:", error);
           throw error;
         }
+
+        // Send notification to project manager about milestone completion
+        try {
+          // Fetch milestone details with project info
+          const { data: milestoneData } = await supabase
+            .from("milestone_records")
+            .select(`
+              name,
+              project_records!inner(
+                name,
+                project_manager_id,
+                employees!project_records_project_manager_id_fkey(
+                  users!inner(id)
+                )
+              )
+            `)
+            .eq("id", id)
+            .single();
+
+          if (milestoneData?.project_records) {
+            const projectRecord = Array.isArray(milestoneData.project_records) 
+              ? milestoneData.project_records[0] 
+              : milestoneData.project_records;
+            
+            if (projectRecord?.employees) {
+              const employee = Array.isArray(projectRecord.employees) 
+                ? projectRecord.employees[0] 
+                : projectRecord.employees;
+              
+              const users = employee?.users as any;
+              const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+              
+              if (userId) {
+                await createMilestoneNotification(
+                  userId,
+                  'completed',
+                  { 
+                    milestoneName: milestoneData.name || "Milestone",
+                    projectName: projectRecord.name || "Project"
+                  },
+                  { actionUrl: '/ops/milestones' }
+                );
+              }
+            }
+          }
+        } catch (notifError) {
+          console.error("Failed to send milestone completion notification:", notifError);
+        }
       }
-
-
 
       return result;
     } catch (error) {

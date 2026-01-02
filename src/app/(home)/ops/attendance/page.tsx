@@ -22,6 +22,8 @@ import SuccessModal from "@/components/ui/modals/SuccessModal";
 import ErrorModal from "@/components/ui/modals/ErrorModal";
 import { supabase } from "@/lib/supabase/client";
 import { getEmployeeInfo } from "@/lib/utils/auth";
+import { createAttendanceRequestNotification } from "@/lib/utils/notifications";
+import { formatDateToDayMonth } from "@/lib/utils";
 
 function AttendancePageContent() {
   const searchParams = useSearchParams();
@@ -86,6 +88,27 @@ function AttendancePageContent() {
         setModalMessage('Failed to send request to supervisor. Please try again.');
         setShowErrorModal(true);
       } else {
+        // Send notification to supervisor
+        if (user.supervisor_id) {
+          try {
+            const requestType = attendanceStatus === 'Late' ? 'late arrival' : 'wrong location';
+            await createAttendanceRequestNotification(
+              user.supervisor_id,
+              'requestSubmitted',
+              {
+                employeeName: user.name,
+                requestType,
+                date: formatDateToDayMonth(new Date().toISOString()),
+              },
+              {
+                actionUrl: '/ops/attendance?tab=request',
+              }
+            );
+          } catch (notifError) {
+            console.error('Failed to send notification:', notifError);
+          }
+        }
+
         setModalTitle('Request Sent!');
         setModalMessage('Your request has been sent to your supervisor for approval.');
         setShowSuccessModal(true);
@@ -156,7 +179,7 @@ function AttendancePageContent() {
       icon: <Clock className="h-5 w-5" />,
       color: "text-primary-600",
       content: todayLoading || sitesLoading ? (
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-100">
           <div className="flex flex-col items-center gap-3">
             <Clock className="h-8 w-8 text-primary-600 animate-pulse" />
             <p className="text-sm text-foreground-secondary">Loading attendance...</p>
@@ -244,7 +267,7 @@ export default function AttendancePage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-100">
           <div className="flex flex-col items-center gap-3">
             <Calendar className="h-8 w-8 text-blue-600 animate-pulse" />
             <p className="text-sm text-foreground-secondary">Loading attendance...</p>

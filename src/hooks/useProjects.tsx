@@ -10,6 +10,8 @@ import { ProjectDetails } from "@/components/ops/project/ProjectForm";
 import { slugify } from "@/lib/utils";
 import { set } from "lodash";
 import { captureSupabaseError } from "@/lib/sentry";
+import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
+import { checkUserEmailPreference } from "./useEmailPreferences";
 
 export type { Project };
 
@@ -312,6 +314,16 @@ export function useProjects() {
     try {
       const company_id = employeeInfo.company_id;
 
+      // Fetch the previous status before updating
+      const { data: prevProject } = await supabase
+        .from("project_records")
+        .select("status")
+        .eq("id", projectId)
+        .single();
+
+      const wasCompleted = prevProject?.status === "Completed";
+      const isNowCompleted = project.status === "Completed";
+
       const { data: result, error } = await baseResult.updateItem(projectId, project);
       if (error) throw error;
 
@@ -326,15 +338,65 @@ export function useProjects() {
 
       const recipients = [...(project.assignees || []), project.project_lead_id, employeeInfo.supervisor_id].filter(Boolean) as string[];
 
-      createNotification({
-        title: "Project Updated",
-        message: `The project "${project.project_title}" has been updated by ${employeeInfo.name}.`,
-        priority: "normal",
-        type_id: 3,
-        recipient_id: recipients,
-        action_url: "/ops/project",
-        company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
-      });
+      // If project just got completed, send completion emails
+      if (!wasCompleted && isNowCompleted) {
+        createNotification({
+          title: "Project Completed",
+          message: `The project "${project.project_title}" has been marked as completed.`,
+          priority: "normal",
+          type_id: 3,
+          recipient_id: recipients,
+          action_url: "/ops/project",
+          company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
+        });
+
+        // Send completion emails to all recipients who have email preferences enabled
+        try {
+          // Fetch employee details for all recipients
+          for (const recipientId of recipients) {
+            const { data: employee } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name, email, users(id)")
+              .eq("id", recipientId)
+              .single();
+
+            if (!employee?.email) continue;
+
+            // Handle users as array (Supabase returns it as array type)
+            const users = employee.users as any;
+            const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+
+            if (userId) {
+              // Check email preference
+              const canSendEmail = await checkUserEmailPreference(userId, 'project_completion');
+              if (canSendEmail) {
+                await sendNotificationEmailAction({
+                  recipientEmail: employee.email,
+                  recipientName: `${employee.first_name} ${employee.last_name}`,
+                  title: `Project Completed: ${project.project_title}`,
+                  message: `We are pleased to inform you that the project "${project.project_title}" has been marked as completed.\n\nThank you for your contribution to this project.`,
+                  priority: 'normal',
+                  actionUrl: `/ops/project`,
+                  context: 'project',
+                });
+              }
+            }
+          }
+        } catch (emailError) {
+          console.error("Failed to send project completion emails:", emailError);
+        }
+      } else {
+        // Regular update notification
+        createNotification({
+          title: "Project Updated",
+          message: `The project "${project.project_title}" has been updated by ${employeeInfo.name}.`,
+          priority: "normal",
+          type_id: 3,
+          recipient_id: recipients,
+          action_url: "/ops/project",
+          company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
+        });
+      }
 
       return result;
     } catch (error) {

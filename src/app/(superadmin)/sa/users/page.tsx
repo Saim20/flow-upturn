@@ -80,6 +80,7 @@ export default function SuperadminUsersPage() {
           .from("employees")
           .select("id, first_name, last_name, email, designation")
           .eq("company_id", selectedCompany)
+          .in("job_status", ['Active', 'Probation']) // Only active employees can become superadmins
           .order("first_name");
 
         if (error) throw error;

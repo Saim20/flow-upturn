@@ -11,15 +11,15 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      first_name, 
-      last_name, 
-      email, 
-      phone_number, 
-      designation, 
-      department_id, 
-      job_status, 
-      hire_date, 
+    const {
+      first_name,
+      last_name,
+      email,
+      phone_number,
+      designation,
+      department_id,
+      job_status,
+      hire_date,
       company_id,
       supervisor_id,
       // Device information for automatic approval during onboarding
@@ -134,6 +134,20 @@ export async function POST(request: NextRequest) {
       return letters + digits
     }
 
+    // Check if this is the first employee in the company (auto-approve first employee)
+    const { count: existingEmployeeCount, error: firstCheckError } = await adminSupabase
+      .from('employees')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', company_id)
+
+    if (firstCheckError) {
+      console.error('First employee check error:', firstCheckError)
+    }
+
+    const isFirstEmployee = (existingEmployeeCount || 0) === 0
+    const approvalStatus = isFirstEmployee ? 'ACCEPTED' : 'PENDING'
+    const employeeRole = isFirstEmployee ? 'Admin' : 'Employee'
+
     // Insert/update employee record
     const { error: upsertError } = await adminSupabase
       .from('employees')
@@ -147,12 +161,12 @@ export async function POST(request: NextRequest) {
           designation,
           department_id,
           job_status,
-          role: 'Employee',
+          role: employeeRole,
           is_supervisor: false,
           hire_date,
           company_id,
           rejection_reason: null,
-          has_approval: 'PENDING',
+          has_approval: approvalStatus,
           id_input: generateIdInput(),
           supervisor_id: supervisor_id || null,
         },
@@ -166,6 +180,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Log first employee auto-approval and add to Administrators team
+    if (isFirstEmployee) {
+      console.log(`✅ First employee ${email} auto-approved as Admin for company ${company_id}`)
+
+      // Explicitly add first employee to Administrators team
+      const { data: adminTeam } = await adminSupabase
+        .from('teams')
+        .select('id')
+        .eq('company_id', company_id)
+        .eq('name', 'Administrators')
+        .eq('is_default', true)
+        .single()
+
+      if (adminTeam) {
+        const { error: teamMemberError } = await adminSupabase
+          .from('team_members')
+          .upsert({
+            team_id: adminTeam.id,
+            employee_id: user.id,
+            added_by: user.id
+          }, { onConflict: 'team_id,employee_id' })
+
+        if (teamMemberError) {
+          console.error('Error adding first employee to Administrators team:', teamMemberError)
+        } else {
+          console.log(`✅ First employee added to Administrators team (ID: ${adminTeam.id})`)
+        }
+      } else {
+        console.warn('⚠️ Administrators team not found for company', company_id)
+      }
+    }
+
     // Register device as pending for approval along with the onboarding request
     if (device_id) {
       // Check if device already exists
@@ -177,14 +223,15 @@ export async function POST(request: NextRequest) {
         .maybeSingle()
 
       if (!existingDevice) {
-        // Register new device as pending (will be approved with onboarding)
+        // Register new device - auto-approved for first employee, pending for others
+        const deviceStatus = isFirstEmployee ? 'approved' : 'pending'
         const { error: deviceError } = await adminSupabase
           .from('user_devices')
           .insert({
             user_id: user.id,
             device_id,
             device_info: device_info || 'Unknown Device',
-            status: 'pending',
+            status: deviceStatus,
             browser: device_browser,
             os: device_os,
             device_type,

@@ -352,14 +352,6 @@ export const ADMIN_LOG_ITEMS: NavigationItem[] = [
     iconColor: ICON_COLORS.emerald,
     keywords: ["transaction", "finance", "money"],
   },
-  {
-    name: "Onboarding",
-    path: "/admin/logs/onboarding",
-    icon: UserPlus,
-    description: "Archive of all employee onboarding processes",
-    iconColor: ICON_COLORS.purple,
-    keywords: ["onboarding", "log", "history"],
-  },
 ];
 
 export const ADMIN_SECTIONS: NavigationSection[] = [

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Employee } from "@/lib/types/schemas";
 import { captureSupabaseError } from "@/lib/sentry";
+import { ACTIVE_STATUSES, OFFBOARDED_STATUSES } from "@/lib/constants";
 
 export interface ExtendedEmployee extends Employee {
   role?: string;
@@ -13,15 +14,21 @@ export interface ExtendedEmployee extends Employee {
   basic_salary?: number;
   supervisor_id?: string | null;
   supervisor_name?: string;
+  job_status?: string;
 }
 
 export function useEmployees() {
   const { employeeInfo } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [extendedEmployees, setExtendedEmployees] = useState<ExtendedEmployee[]>([]);
+  const [offboardedEmployees, setOffboardedEmployees] = useState<ExtendedEmployee[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  /**
+   * Fetch active employees only (excludes Resigned/Terminated)
+   * Use this for most employee selections and listings
+   */
   const fetchEmployees = useCallback(async (company_id?: number) => {
     setLoading(true);
     setError(null);
@@ -36,7 +43,7 @@ export function useEmployees() {
         .from("employees")
         .select("id, first_name, last_name, email, designation, department_id(name)")
         .eq("company_id", companyId)
-        .eq("job_status", 'Active');
+        .in("job_status", ACTIVE_STATUSES);
 
       if (error) throw error;
 
@@ -65,6 +72,10 @@ export function useEmployees() {
     }
   }, [employeeInfo?.company_id]);
 
+  /**
+   * Fetch extended employee data for active employees only
+   * Includes additional fields like phone, join date, salary, supervisor
+   */
   const fetchExtendedEmployees = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -77,9 +88,9 @@ export function useEmployees() {
 
       const { data, error } = await supabase
         .from("employees")
-        .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id")
-        .eq("job_status", 'Active')
-        .eq("company_id", companyId);
+        .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id, job_status")
+        .eq("company_id", companyId)
+        .in("job_status", ACTIVE_STATUSES);
 
       if (error) throw error;
 
@@ -100,6 +111,7 @@ export function useEmployees() {
         basic_salary: employee.basic_salary,
         supervisor_id: employee.supervisor_id,
         supervisor_name: employee.supervisor_id ? employeeMap.get(employee.supervisor_id) || "Unknown" : undefined,
+        job_status: employee.job_status,
       })) || [];
 
       setExtendedEmployees(employees);
@@ -113,6 +125,70 @@ export function useEmployees() {
         { companyId: employeeInfo?.company_id }
       );
       console.error("Error fetching employees:", errorObj);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [employeeInfo?.company_id]);
+
+  /**
+   * Fetch offboarded employees (Resigned/Terminated) for viewing in dedicated section
+   */
+  const fetchOffboardedEmployees = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const companyId = employeeInfo?.company_id;
+      if (!companyId) {
+        setLoading(false);
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id, job_status")
+        .eq("company_id", companyId)
+        .in("job_status", OFFBOARDED_STATUSES)
+        .order("first_name", { ascending: true });
+
+      if (error) throw error;
+
+      // Create a map for quick supervisor name lookup - fetch all employees for supervisor lookup
+      const { data: allEmployees } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name")
+        .eq("company_id", companyId);
+
+      const employeeMap = new Map<string, string>();
+      allEmployees?.forEach((emp) => {
+        employeeMap.set(emp.id, `${emp.first_name} ${emp.last_name}`);
+      });
+
+      const employees: ExtendedEmployee[] = data?.map((employee) => ({
+        id: employee.id,
+        name: `${employee.first_name} ${employee.last_name}`,
+        email: employee.email,
+        designation: employee.designation || undefined,
+        department: (employee.department_id as unknown as { name: string })?.name || undefined,
+        phone: employee.phone_number,
+        joinDate: employee.hire_date,
+        basic_salary: employee.basic_salary,
+        supervisor_id: employee.supervisor_id,
+        supervisor_name: employee.supervisor_id ? employeeMap.get(employee.supervisor_id) || "Unknown" : undefined,
+        job_status: employee.job_status,
+      })) || [];
+
+      setOffboardedEmployees(employees);
+      return employees;
+    } catch (err) {
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setError(errorObj);
+      captureSupabaseError(
+        { message: errorObj.message },
+        "fetchOffboardedEmployees",
+        { companyId: employeeInfo?.company_id }
+      );
+      console.error("Error fetching offboarded employees:", errorObj);
       return [];
     } finally {
       setLoading(false);
@@ -179,10 +255,12 @@ export function useEmployees() {
   return useMemo(() => ({
     employees,
     extendedEmployees,
+    offboardedEmployees,
     loading,
     error,
     fetchEmployees,
     fetchExtendedEmployees,
+    fetchOffboardedEmployees,
     fetchEmployeesByIds,
-  }), [employees, extendedEmployees, loading, error, fetchEmployees, fetchExtendedEmployees, fetchEmployeesByIds]);
+  }), [employees, extendedEmployees, offboardedEmployees, loading, error, fetchEmployees, fetchExtendedEmployees, fetchOffboardedEmployees, fetchEmployeesByIds]);
 }

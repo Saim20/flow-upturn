@@ -61,21 +61,23 @@ export const RequisitionInventoryCreateModal: React.FC<RequisitionInventoryCreat
     >
       {({ values, handleChange, errors, setFieldValue }) => {
         const handleIncrement = () => {
+          const currentQuantity = Number(values.quantity) || 0;
           const event = {
             target: {
               name: 'quantity',
-              value: String(values.quantity + 1)
+              value: String(currentQuantity + 1)
             }
           } as React.ChangeEvent<HTMLInputElement>;
           handleChange(event);
         };
 
         const handleDecrement = () => {
-          if (values.quantity > 1) {
+          const currentQuantity = Number(values.quantity) || 1;
+          if (currentQuantity > 1) {
             const event = {
               target: {
                 name: 'quantity',
-                value: String(values.quantity - 1)
+                value: String(currentQuantity - 1)
               }
             } as React.ChangeEvent<HTMLInputElement>;
             handleChange(event);

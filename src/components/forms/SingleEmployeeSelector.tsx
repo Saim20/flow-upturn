@@ -14,6 +14,7 @@ interface SingleEmployeeSelectorProps {
   disabled?: boolean;
   placeholder?: string;
   required?: boolean;
+  allowClear?: boolean;
 }
 
 export default function SingleEmployeeSelector({
@@ -24,7 +25,8 @@ export default function SingleEmployeeSelector({
   error,
   disabled = false,
   placeholder = "Search and select employee...",
-  required = false
+  required = false,
+  allowClear = true
 }: SingleEmployeeSelectorProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -50,6 +52,7 @@ export default function SingleEmployeeSelector({
   };
 
   const handleClearSelection = () => {
+    // Pass empty string when clearing - parent component handles conversion to null if needed
     setSelectedEmployeeId("");
     setSearchTerm("");
     if (searchInputRef.current) {
