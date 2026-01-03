@@ -27,7 +27,7 @@ export type ProjectDetails = Project;
 interface ProjectFormProps {
   initialData?: ProjectDetails;
   initialMilestone?: Milestone;
-  onSubmit: (data: ProjectDetails, milestones: Milestone[]) => void;
+  onSubmit: (data: ProjectDetails, milestones: Milestone[], isDraft?: boolean) => void;
   onCancel?: () => void;
   isSubmitting: boolean;
   departments: { id: number; name: string }[];
@@ -45,6 +45,7 @@ const initialProjectDetails: ProjectDetails = {
   department_ids: [],
   status: "Ongoing",
   assignees: [],
+  is_draft: false,
 };
 
 
@@ -213,15 +214,15 @@ export default function ProjectForm({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, isDraft = false) => {
     e.preventDefault();
 
     // mark all fields as touched on submit
     const allFields = Object.keys(projectDetails);
     setTouched(Object.fromEntries(allFields.map((f) => [f, true])));
 
-    // check milestone weightage
-    if (milestones.length > 0) {
+    // check milestone weightage - only enforce 100% rule when publishing (not saving as draft)
+    if (!isDraft && milestones.length > 0) {
       const totalWeightage = milestones.reduce(
         (sum, m) => sum + m.weightage,
         0
@@ -242,9 +243,12 @@ export default function ProjectForm({
       return;
     }
 
-    onSubmit(projectDetails, milestones);
+    onSubmit(projectDetails, milestones, isDraft);
+  };
 
-
+  const handleSaveAsDraft = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent, true);
   };
 
   useEffect(() => {
@@ -623,6 +627,16 @@ export default function ProjectForm({
         </div>
       )}
 
+      {/* Draft indicator */}
+      {initialData?.is_draft && (
+        <div className="bg-warning/10 border border-warning/30 dark:bg-warning/20 p-4 rounded-md mb-4">
+          <p className="text-warning-700 dark:text-warning-300 flex items-center">
+            <WarningCircle size={18} className="mr-2" />
+            This project is a draft. Publish it to notify assigned team members.
+          </p>
+        </div>
+      )}
+
       {/* Submit */}
       <div className="flex justify-end gap-4 mt-8">
         {onCancel && (
@@ -639,6 +653,23 @@ export default function ProjectForm({
           </motion.button>
         )}
 
+        {/* Save as Draft button */}
+        <motion.button
+          type="button"
+          onClick={handleSaveAsDraft}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          disabled={isSubmitting}
+          className={`border border-primary-500 text-primary-700 dark:text-primary-300 py-2 px-5 rounded-md font-medium shadow-sm flex items-center transition-all duration-150 ${isSubmitting
+            ? "opacity-50 cursor-not-allowed"
+            : "hover:bg-primary-50 dark:hover:bg-primary-900/20"
+            }`}
+          data-testid="save-draft-button"
+        >
+          <FileText size={16} className="mr-2" />
+          {initialData?.is_draft ? "Update Draft" : "Save as Draft"}
+        </motion.button>
+
         <motion.button
           type="submit"
           whileHover={{ scale: 1.03 }}
@@ -651,7 +682,7 @@ export default function ProjectForm({
           data-testid={mode === "create" ? "create-project-button" : "update-project-button"}
         >
           <Check size={16} className="mr-2" />
-          {mode === "create" ? "Create Project" : "Update Project"}
+          {mode === "create" ? "Create Project" : (initialData?.is_draft ? "Publish Project" : "Update Project")}
 
         </motion.button>
       </div>

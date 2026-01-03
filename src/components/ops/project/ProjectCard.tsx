@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardFooter, StatusBadge, InfoRow } from "@/components/ui/Card";
-import { ArrowSquareOut, TrashSimple, PencilSimple, Clock, Calendar, Building, User, Target } from "@phosphor-icons/react";
+import { ArrowSquareOut, TrashSimple, PencilSimple, Clock, Calendar, Building, User, Target, FolderDashed } from "@phosphor-icons/react";
 import { Project } from "@/hooks/useProjects";
 import Link from "next/link";
 import { Employee } from "@/lib/types/schemas";
@@ -24,6 +24,7 @@ interface ProjectCardProps {
   showDetails?: boolean;
   progressColor?: string;
   statusIcon?: React.ReactNode;
+  isDraft?: boolean;
 }
 
 export default function ProjectCard({
@@ -37,6 +38,7 @@ export default function ProjectCard({
   showDelete = false,
   showDetails = false,
   statusIcon = null,
+  isDraft = false,
 }: ProjectCardProps) {
   const {
     id,
@@ -104,9 +106,19 @@ export default function ProjectCard({
   );
 
   return (
-    <Card data-testid="project-card">
+    <Card data-testid="project-card" className={isDraft ? "border-warning/30 bg-warning/5 dark:bg-warning/10" : ""}>
       <CardHeader
-        title={project_title}
+        title={
+          <span className="flex items-center gap-2">
+            {project_title}
+            {isDraft && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-warning/20 text-warning-700 dark:text-warning-300 border border-warning/30">
+                <FolderDashed size={12} />
+                Draft
+              </span>
+            )}
+          </span>
+        }
         icon={statusIcon}
         action={actions}
       />

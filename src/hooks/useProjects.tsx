@@ -29,9 +29,11 @@ export function useProjects() {
   // --- STATES ---
   const [ongoingProjects, setOngoingProjects] = useState<ProjectDetails[]>([]);
   const [completedProjects, setCompletedProjects] = useState<ProjectDetails[]>([]);
+  const [draftProjects, setDraftProjects] = useState<ProjectDetails[]>([]);
 
   const [ongoingLoading, setOngoingLoading] = useState(false);
   const [completedLoading, setCompletedLoading] = useState(false);
+  const [draftsLoading, setDraftsLoading] = useState(false);
 
   const [ongoingSearchLoading, setOngoingSearchLoading] = useState(false);
   const [completedSearchLoading, setCompletedSearchLoading] = useState(false);
@@ -39,9 +41,11 @@ export function useProjects() {
   // Pagination cursors
   const [lastFetchedOngoingProjectId, setLastFetchedOngoingProjectId] = useState<number | null>(null);
   const [lastFetchedCompletedProjectId, setLastFetchedCompletedProjectId] = useState<number | null>(null);
+  const [lastFetchedDraftProjectId, setLastFetchedDraftProjectId] = useState<number | null>(null);
 
   const [hasMoreOngoingProjects, setHasMoreOngoingProjects] = useState(true);
   const [hasMoreCompletedProjects, setHasMoreCompletedProjects] = useState(true);
+  const [hasMoreDraftProjects, setHasMoreDraftProjects] = useState(true);
 
   // --- FETCH ONGOING PROJECTS WITH PAGINATION ---
   const fetchOngoingProjects = useCallback(
@@ -57,6 +61,7 @@ export function useProjects() {
           .select("*")
           .eq("company_id", employeeInfo.company_id)
           .eq("status", "Ongoing")
+          .or(`is_draft.is.null,is_draft.eq.false`) // Exclude drafts from ongoing projects
           .or(`project_lead_id.eq.${employeeInfo.id},assignees.cs.{${employeeInfo.id}},created_by.eq.${employeeInfo.id}`)
           .order("created_at", { ascending: false })
           .limit(limit);
@@ -153,6 +158,63 @@ export function useProjects() {
       }
     },
     [lastFetchedCompletedProjectId, employeeInfo]
+  );
+
+  // --- FETCH DRAFT PROJECTS WITH PAGINATION ---
+  const fetchDraftProjects = useCallback(
+    async (limit = 10, reset = false) => {
+      try {
+        if (!employeeInfo) {
+          return [];
+        }
+        setDraftsLoading(true);
+
+        let query = supabase
+          .from("project_records")
+          .select("*")
+          .eq("company_id", employeeInfo.company_id)
+          .eq("is_draft", true)
+          .eq("created_by", employeeInfo.id) // Only show drafts created by the current user
+          .order("created_at", { ascending: false })
+          .limit(limit);
+
+        // Cursor-based pagination
+        if (!reset && lastFetchedDraftProjectId) {
+          query = query.gt("id", lastFetchedDraftProjectId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          setHasMoreDraftProjects(false);
+          if (reset) setDraftProjects([]);
+          return [];
+        }
+
+        setDraftProjects((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const uniqueNew = data.filter((p) => !existingIds.has(p.id));
+          return reset ? uniqueNew : [...prev, ...uniqueNew];
+        });
+
+        setLastFetchedDraftProjectId(data[data.length - 1].id as any);
+        setHasMoreDraftProjects(data.length === limit);
+
+        return data;
+      } catch (error) {
+        captureSupabaseError(
+          { message: error instanceof Error ? error.message : String(error) },
+          "fetchDraftProjects",
+          { companyId: employeeInfo?.company_id }
+        );
+        console.error("Error fetching draft projects:", error);
+        throw error;
+      } finally {
+        setDraftsLoading(false);
+      }
+    },
+    [lastFetchedDraftProjectId, employeeInfo]
   );
 
   // --- SEARCH PROJECTS ---
@@ -268,30 +330,39 @@ export function useProjects() {
       };
 
       const result = await baseResult.createItem(finalData);
-      const recipients = [...(project.assignees || []), project.project_lead_id].filter(Boolean) as string[];
+      
+      // Only send notifications if project is NOT a draft
+      if (!project.is_draft) {
+        // Filter out the creator from recipients
+        const recipients = [...(project.assignees || []), project.project_lead_id]
+          .filter(Boolean)
+          .filter((id) => id !== employeeInfo.id) as string[];
 
-      // Notifications
-      void createNotification({
-        title: "New Project Assigned",
-        message: `A new project "${project.project_title}" has been assigned to you.`,
-        priority: "normal",
-        type_id: 3,
-        recipient_id: recipients,
-        action_url: "/ops/project",
-        company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
-        department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
-      });
+        // Notifications to assigned members (excluding creator)
+        if (recipients.length > 0) {
+          void createNotification({
+            title: "New Project Assigned",
+            message: `A new project "${project.project_title}" has been assigned to you.`,
+            priority: "normal",
+            type_id: 3,
+            recipient_id: recipients,
+            action_url: "/ops/project",
+            company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
+            department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+          });
+        }
 
-      void createNotification({
-        title: "New Project Created",
-        message: `A new project "${project.project_title}" has been created by ${employeeInfo.name}.`,
-        priority: "normal",
-        type_id: 3,
-        recipient_id: [employeeInfo.supervisor_id].filter(Boolean) as string[],
-        action_url: "/ops/project",
-        company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
-        department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
-      });
+        void createNotification({
+          title: "New Project Created",
+          message: `A new project "${project.project_title}" has been created by ${employeeInfo.name}.`,
+          priority: "normal",
+          type_id: 3,
+          recipient_id: [employeeInfo.supervisor_id].filter(Boolean) as string[],
+          action_url: "/ops/project",
+          company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
+          department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+        });
+      }
 
       return result;
     } catch (error) {
@@ -315,15 +386,18 @@ export function useProjects() {
     try {
       const company_id = employeeInfo.company_id;
 
-      // Fetch the previous status before updating
+      // Fetch the previous project state before updating
       const { data: prevProject } = await supabase
         .from("project_records")
-        .select("status")
+        .select("status, is_draft")
         .eq("id", projectId)
         .single();
 
       const wasCompleted = prevProject?.status === "Completed";
       const isNowCompleted = project.status === "Completed";
+      const wasDraft = prevProject?.is_draft === true;
+      const isNowDraft = project.is_draft === true;
+      const isPublishing = wasDraft && !isNowDraft;
 
       const { data: result, error } = await baseResult.updateItem(projectId, project);
       if (error) throw error;
@@ -337,10 +411,76 @@ export function useProjects() {
         prevProjects.map((p) => (p.id === projectId ? (updated ?? p) : p))
       );
 
+      // Filter out the creator/updater from recipients for assignment notifications
+      const assignmentRecipients = [...(project.assignees || []), project.project_lead_id]
+        .filter(Boolean)
+        .filter((id) => id !== employeeInfo.id) as string[];
+      
       const recipients = [...(project.assignees || []), project.project_lead_id, employeeInfo.supervisor_id].filter(Boolean) as string[];
 
+      // If project is being published (draft → non-draft), send assignment notifications
+      if (isPublishing && assignmentRecipients.length > 0) {
+        createNotification({
+          title: "New Project Assigned",
+          message: `A new project "${project.project_title}" has been assigned to you.`,
+          priority: "normal",
+          type_id: 3,
+          recipient_id: assignmentRecipients,
+          action_url: "/ops/project",
+          company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
+          department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+        });
+
+        // Notify supervisor about the published project
+        if (employeeInfo.supervisor_id) {
+          createNotification({
+            title: "New Project Published",
+            message: `A new project "${project.project_title}" has been published by ${employeeInfo.name}.`,
+            priority: "normal",
+            type_id: 3,
+            recipient_id: [employeeInfo.supervisor_id],
+            action_url: "/ops/project",
+            company_id: typeof company_id === 'string' ? parseInt(company_id) : company_id!,
+            department_id: typeof employeeInfo.department_id === 'string' ? parseInt(employeeInfo.department_id) : employeeInfo.department_id,
+          });
+        }
+
+        // Send email notifications for published project
+        try {
+          for (const recipientId of assignmentRecipients) {
+            const { data: employee } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name, email, users(id)")
+              .eq("id", recipientId)
+              .single();
+
+            if (!employee?.email) continue;
+
+            const users = employee.users as any;
+            const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+
+            if (userId) {
+              const canSendEmail = await checkUserEmailPreference(userId, 'project_assignment');
+              if (canSendEmail) {
+                await sendNotificationEmailAction({
+                  recipientEmail: employee.email,
+                  recipientName: `${employee.first_name} ${employee.last_name}`,
+                  title: `New Project Assigned: ${project.project_title}`,
+                  message: `You have been assigned to the project "${project.project_title}".\n\nPlease review the project details and milestones.`,
+                  priority: 'normal',
+                  actionUrl: `/ops/project`,
+                  context: 'project',
+                });
+              }
+            }
+          }
+        } catch (emailError) {
+          console.error("Failed to send project assignment emails:", emailError);
+        }
+      }
+
       // If project just got completed, send completion emails
-      if (!wasCompleted && isNowCompleted) {
+      else if (!wasCompleted && isNowCompleted) {
         createNotification({
           title: "Project Completed",
           message: `The project "${project.project_title}" has been marked as completed.`,
@@ -386,8 +526,8 @@ export function useProjects() {
         } catch (emailError) {
           console.error("Failed to send project completion emails:", emailError);
         }
-      } else {
-        // Regular update notification
+      } else if (!isNowDraft) {
+        // Regular update notification (only for non-draft projects)
         createNotification({
           title: "Project Updated",
           message: `The project "${project.project_title}" has been updated by ${employeeInfo.name}.`,
@@ -455,18 +595,22 @@ export function useProjects() {
 
     ongoingProjects,
     completedProjects,
+    draftProjects,
 
     ongoingLoading,
     completedLoading,
+    draftsLoading,
 
     ongoingSearchLoading,
     completedSearchLoading,
 
     fetchOngoingProjects,
     fetchCompletedProjects,
+    fetchDraftProjects,
 
     hasMoreOngoingProjects,
     hasMoreCompletedProjects,
+    hasMoreDraftProjects,
 
     searchOngoingProjects,
     searchCompletedProjects,

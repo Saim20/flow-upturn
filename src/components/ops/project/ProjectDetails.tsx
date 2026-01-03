@@ -26,7 +26,7 @@ import { StatusBadge, InfoRow } from "@/components/ui/Card";
 import BaseModal from "@/components/ui/modals/BaseModal";
 import LoadingSection from "@/app/(home)/home/components/LoadingSection";
 import { getCompanyId, getEmployeeId } from "@/lib/utils/auth";
-import { MilestoneUpdateModal } from "./milestone";
+import { MilestoneUpdateModal, MilestoneGanttChart } from "./milestone";
 import MilestoneListItem from "./milestone/MilestoneListItem";
 import { useProjects } from "@/hooks/useProjects";
 import { useRouter } from "next/navigation";
@@ -100,7 +100,7 @@ export default function ProjectDetails({
   const canWriteMilestones = canWrite(PERMISSION_MODULES.MILESTONES);
   const canDeleteMilestones = canDelete(PERMISSION_MODULES.MILESTONES);
 
-  const {updateProject} = useProjects()
+  const { updateProject } = useProjects()
 
   useEffect(() => {
     async function fetchUserId() {
@@ -152,7 +152,7 @@ export default function ProjectDetails({
         (error as any).issues = validation.errors;
         throw error;
       }
-      
+
       await updateProject(projectDetails?.id || "", validation.data);
 
       console.log(validation.data)
@@ -422,7 +422,7 @@ export default function ProjectDetails({
         projectId={projectId}
         projectTitle={projectDetails.project_title}
       />
-      
+
       <motion.div
         initial="hidden"
         animate="visible"
@@ -437,177 +437,183 @@ export default function ProjectDetails({
           <div className="flex items-center gap-3">
             <Building size={24} className="text-primary-600" />
             <h1 className="text-2xl font-bold text-foreground-primary">
-                Project Details
-              </h1>
-            </div>
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              className="p-2 hover:bg-background-tertiary dark:bg-surface-secondary rounded-full"
-            >
-              <X size={20} />
-            </Button>
-          </motion.div>
+              Project Details
+            </h1>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="p-2 hover:bg-background-tertiary dark:bg-surface-secondary rounded-full"
+          >
+            <X size={20} />
+          </Button>
+        </motion.div>
 
-          {/* Project Overview */}
-          <motion.div variants={fadeInUp}>
-            <Card>
-              <CardHeader
-                title={projectDetails.project_title}
-                subtitle={projectDetails.description}
-                icon={<Building size={20} />}
-                action={
-                  <StatusBadge
-                    status={projectDetails.status || "pending"}
-                    variant={getStatusVariant(projectDetails.status)}
-                  />
-                }
-              />
+        {/* Project Overview */}
+        <motion.div variants={fadeInUp}>
+          <Card>
+            <CardHeader
+              title={projectDetails.project_title}
+              subtitle={projectDetails.description}
+              icon={<Building size={20} />}
+              action={
+                <StatusBadge
+                  status={projectDetails.status || "pending"}
+                  variant={getStatusVariant(projectDetails.status)}
+                />
+              }
+            />
 
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <InfoRow
-                    icon={<User size={16} />}
-                    label="Project Lead"
-                    value={
-                      employees.find(
-                        (emp) => emp.id === projectDetails.project_lead_id
-                      )?.name || "Not assigned"
-                    }
-                  />
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <InfoRow
+                  icon={<User size={16} />}
+                  label="Project Lead"
+                  value={
+                    employees.find(
+                      (emp) => emp.id === projectDetails.project_lead_id
+                    )?.name || "Not assigned"
+                  }
+                />
 
-                  <InfoRow
-                    icon={<Clock size={16} />}
-                    label="Progress"
-                    value={`${projectProgress}%`}
-                  />
+                <InfoRow
+                  icon={<Clock size={16} />}
+                  label="Progress"
+                  value={`${projectProgress}%`}
+                />
 
-                  <InfoRow
-                    icon={<Calendar size={16} />}
-                    label="Start Date"
-                    value={formatDate(projectDetails.start_date || "")}
-                  />
+                <InfoRow
+                  icon={<Calendar size={16} />}
+                  label="Start Date"
+                  value={formatDate(projectDetails.start_date || "")}
+                />
 
-                  <InfoRow
-                    icon={<Calendar size={16} />}
-                    label="End Date"
-                    value={formatDate(projectDetails.end_date || "")}
-                  />
-
-                  {projectDetails.assignees &&
-                    projectDetails.assignees.length > 0 && (
-                      <InfoRow
-                        icon={<Users size={16} />}
-                        label="Team Members"
-                        value={`${projectDetails.assignees.length} members`}
-                      />
-                    )}
-                </div>
+                <InfoRow
+                  icon={<Calendar size={16} />}
+                  label="End Date"
+                  value={formatDate(projectDetails.end_date || "")}
+                />
 
                 {projectDetails.assignees &&
                   projectDetails.assignees.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-foreground-secondary mb-2">
-                        Assigned Team:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {projectDetails.assignees.map((assigneeId: string) => {
-                          const employee = employees.find(
-                            (emp) => emp.id === assigneeId
-                          );
-                          return employee ? (
-                            <span
-                              key={assigneeId}
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200"
-                            >
-                              {employee.name}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    </div>
+                    <InfoRow
+                      icon={<Users size={16} />}
+                      label="Team Members"
+                      value={`${projectDetails.assignees.length} members`}
+                    />
                   )}
+              </div>
 
-                {projectDetails.status !== "Completed" && canWriteProjects && (projectDetails.created_by === currentUserId || projectDetails.project_lead_id === currentUserId) && (
-                  <div className="pt-4 border-t border-border-primary">
-                    <Button
-                      onClick={() => setDisplaySubmissionModal(true)}
-                      className="flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle size={16} className="mr-2" />
-                      Submit Project
-                    </Button>
+              {projectDetails.assignees &&
+                projectDetails.assignees.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-foreground-secondary mb-2">
+                      Assigned Team:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {projectDetails.assignees.map((assigneeId: string) => {
+                        const employee = employees.find(
+                          (emp) => emp.id === assigneeId
+                        );
+                        return employee ? (
+                          <span
+                            key={assigneeId}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200"
+                          >
+                            {employee.name}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
 
-          {/* Milestones Section */}
-          <motion.div variants={fadeInUp}>
-            <Card>
-              <CardHeader
-                title="Milestones"
-                icon={<Target size={20} />}
+              {projectDetails.status !== "Completed" && canWriteProjects && (projectDetails.created_by === currentUserId || projectDetails.project_lead_id === currentUserId) && (
+                <div className="pt-4 border-t border-border-primary">
+                  <Button
+                    onClick={() => setDisplaySubmissionModal(true)}
+                    className="flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={16} className="mr-2" />
+                    Submit Project
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Milestone Gantt Chart */}
+        {milestones.length > 0 && (
+          <MilestoneGanttChart
+            milestones={milestones}
+            project={projectDetails}
+          />
+        )}
+
+        {/* Milestones Section */}
+        <Card>
+          <CardHeader
+            title="Milestones"
+            icon={<Target size={20} />}
+            action={
+              projectDetails.status !== "Completed" &&
+              canWriteMilestones &&
+              milestones.reduce((acc, m) => acc + m.weightage, 0) < 100 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCreatingMilestone(true)}
+                  aria-label="Add new milestone"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Milestone
+                </Button>
+              )
+            }
+          />
+
+          <CardContent>
+            {loadingMilestones ? (
+              <LoadingSection
+                text="Loading milestones..."
+                icon={Monitor}
+                color="blue"
+              />
+            ) : milestones.length > 0 ? (
+              <div className="space-y-4">
+                {milestones.map((milestone, index) => (
+                  <MilestoneListItem
+                    key={milestone.id ?? index}
+                    milestone={milestone}
+                    projectDetails={projectDetails}
+                    onMilestoneStatusUpdate={onMilestoneStatusUpdate}
+                    setSelectedMilestone={setSelectedMilestone}
+                    index={index}
+                    canWriteMilestones={canWriteMilestones}
+                  />
+                ))}
+
+              </div>
+            ) : (
+              <EmptyState
+                icon={<Target className="h-8 w-8" />}
+                title="No milestones yet"
+                description="Add milestones to track project progress"
                 action={
-                  projectDetails.status !== "Completed" &&
-                  canWriteMilestones &&
-                  milestones.reduce((acc, m) => acc + m.weightage, 0) < 100 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsCreatingMilestone(true)}
-                      aria-label="Add new milestone"
-                    >
-                      <Plus size={16} className="mr-2" />
-                      Add Milestone
-                    </Button>
-                  )
+                  projectDetails.status !== "Completed" && canWriteMilestones
+                    ? {
+                      label: "Add First Milestone",
+                      onClick: () => setIsCreatingMilestone(true),
+                      icon: <Plus size={16} />,
+                    }
+                    : undefined
                 }
               />
-
-              <CardContent>
-                {loadingMilestones ? (
-                  <LoadingSection
-                    text="Loading milestones..."
-                    icon={Monitor}
-                    color="blue"
-                  />
-                ) : milestones.length > 0 ? (
-                  <div className="space-y-4">
-                    {milestones.map((milestone, index) => (
-                      <MilestoneListItem
-                        key={milestone.id ?? index}
-                        milestone={milestone}
-                        projectDetails={projectDetails}
-                        onMilestoneStatusUpdate={onMilestoneStatusUpdate}
-                        setSelectedMilestone={setSelectedMilestone}
-                        index={index}
-                        canWriteMilestones={canWriteMilestones}
-                      />
-                    ))}
-
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={<Target className="h-8 w-8" />}
-                    title="No milestones yet"
-                    description="Add milestones to track project progress"
-                    action={
-                      projectDetails.status !== "Completed" && canWriteMilestones
-                        ? {
-                          label: "Add First Milestone",
-                          onClick: () => setIsCreatingMilestone(true),
-                          icon: <Plus size={16} />,
-                        }
-                        : undefined
-                    }
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Submission Modal */}
       {displaySubmissionModal && (

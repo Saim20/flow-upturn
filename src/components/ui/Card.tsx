@@ -14,7 +14,7 @@ interface CardProps {
 }
 
 interface CardHeaderProps {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   icon?: ReactNode;
   action?: ReactNode;

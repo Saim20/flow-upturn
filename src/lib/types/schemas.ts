@@ -152,6 +152,7 @@ export interface Project {
   assignees?: string[];
   created_by?: string;
   created_at?: string;
+  is_draft?: boolean;
 }
 
 export interface Milestone {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Archive, FolderPlus, Folder, FolderOpen } from "@phosphor-icons/react";
+import { Archive, FolderPlus, Folder, FolderOpen, FolderDashed } from "@phosphor-icons/react";
 import TabView, { TabItem } from "@/components/ui/TabView";
 import { fadeInUp } from "@/components/ui/animations";
 import { getEmployeeInfo } from "@/lib/utils/auth";
@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CompletedProjectsList from "@/components/ops/project/CompletedProjectsList";
 import CreateNewProjectPage from "@/components/ops/project/CreateNewProject";
 import ProjectsList from "@/components/ops/project/OngoingProjectsView";
+import DraftProjectsList from "@/components/ops/project/DraftProjectsView";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { ModulePermissionsBanner } from "@/components/permissions";
@@ -29,6 +30,12 @@ const TABS = [
         label: "Completed",
         icon: <Folder size={16} />,
         color: "text-success",
+    },
+    {
+        key: "drafts",
+        label: "Drafts",
+        icon: <FolderDashed size={16} />,
+        color: "text-warning-600 dark:text-warning-400",
     },
     {
         key: "create",
@@ -89,7 +96,7 @@ export default function ProjectLayout({
                 const visibleTabs =
                     retrievedUser.role === "Admin" || hasWritePermission
                         ? TABS
-                        : TABS.filter((tab) => tab.key !== "create");
+                        : TABS.filter((tab) => tab.key !== "create" && tab.key !== "drafts");
 
                 setTabs(
                     visibleTabs.map((tab) => ({
@@ -113,6 +120,8 @@ export default function ProjectLayout({
                 return <ProjectsList setActiveTab={setActiveTab} />;
             case "completed":
                 return <CompletedProjectsList setActiveTab={setActiveTab} />;
+            case "drafts":
+                return <DraftProjectsList setActiveTab={setActiveTab} />;
             case "archived":
                 return (
                     <div className="flex flex-col items-center justify-center p-12 bg-background-secondary dark:bg-background-tertiary rounded-xl border border-border-primary text-center">

@@ -63,12 +63,13 @@ export default function CreateNewProjectPage({ setActiveTab }: { setActiveTab: (
 
   const handleSubmit = async (
     data: ProjectDetails,
-    milestones: any[]
+    milestones: any[],
+    isDraft = false
   ) => {
     setIsSubmitting(true);
 
     try {
-      const projectResult = await createProject({ ...data });
+      const projectResult = await createProject({ ...data, is_draft: isDraft });
       if (!projectResult || !projectResult.success) {
         throw new Error("Failed to create project");
       }
@@ -105,16 +106,22 @@ export default function CreateNewProjectPage({ setActiveTab }: { setActiveTab: (
         }
       }
 
-      toast.success("Project created successfully!");
+      toast.success(isDraft ? "Project saved as draft!" : "Project created successfully!");
 
-      // Explicitly navigate to ongoing tab - this ensures URL updates for tests
-      router.push('/ops/project?tab=ongoing');
-      setActiveTab('ongoing')
+      // Explicitly navigate to appropriate tab
+      if (isDraft) {
+        router.push('/ops/project?tab=drafts');
+        setActiveTab('drafts');
+      } else {
+        router.push('/ops/project?tab=ongoing');
+        setActiveTab('ongoing');
+      }
     } catch (error) {
       captureError(error, { 
         operation: "createProject", 
         projectTitle: data.project_title,
-        milestonesCount: milestones.length 
+        milestonesCount: milestones.length,
+        isDraft
       });
       toast.error(
         error instanceof Error ? error.message : "Failed to create project"
@@ -180,7 +187,7 @@ export function UpdateProjectPage({
   initialData: ProjectDetails;
   employees: { id: string; name: string }[];
   departments: Department[];
-  onSubmit: (data: ProjectDetails) => void;
+  onSubmit: (data: ProjectDetails, isDraft?: boolean) => void;
   onClose: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -200,10 +207,11 @@ export function UpdateProjectPage({
     loadMilestones();
   }, [initialData.id]);
 
-  const handleSubmit = async (data: ProjectDetails, milestones: any) => {
+  const handleSubmit = async (data: ProjectDetails, milestones: any, isDraft = false) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(data);
+      // Pass is_draft status to the update handler
+      await onSubmit({ ...data, is_draft: isDraft }, isDraft);
 
       const projectId = data.id;
 
