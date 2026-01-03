@@ -30,14 +30,12 @@ export default function ProjectCard({
   project,
   onEdit,
   onDelete,
-  onDetails,
   employees,
   departments,
   isDeleting = false,
   showEdit = false,
   showDelete = false,
   showDetails = false,
-  progressColor = "bg-blue-100 text-blue-800",
   statusIcon = null,
 }: ProjectCardProps) {
   const {

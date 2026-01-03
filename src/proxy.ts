@@ -11,13 +11,6 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const currentPath = url.pathname;
 
-  // Allow landing page (root) without authentication
-  if (currentPath === "/") {
-    return NextResponse.next({
-      request,
-    });
-  }
-
   // Initialize Supabase client for session management
   let response = NextResponse.next({
     request,
@@ -46,12 +39,30 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Get user info from Supabase
+  // IMPORTANT: Get user to refresh session - this must happen before any logic
+  // to ensure session tokens are properly refreshed
   const {
     data: { user: supabaseUser },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  
+  // Handle auth errors gracefully - "session missing" is expected for unauthenticated users
+  if (authError && 
+      !authError.message?.includes('refresh') && 
+      !authError.message?.includes('session')) {
+    console.error('Auth error in proxy:', authError.message);
+  }
+
+  // Redirect authenticated users away from landing page
+  if (currentPath === "/" && supabaseUser) {
+    url.pathname = "/home";
+    return NextResponse.redirect(url);
+  }
+
+  // Allow landing page (root) for unauthenticated users
+  if (currentPath === "/") {
+    return response;
+  }
 
   // Check if current path starts with any auth route
   const isAuthRoute = authRoutes.some((route) =>

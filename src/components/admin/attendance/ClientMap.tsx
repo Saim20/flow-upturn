@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import L from "leaflet";
 import { InlineSpinner } from "@/components/ui";
-import { MagnifyingGlass, MapPin, X, CircleNotch } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, X, CircleNotch, CaretDown, Target } from "@phosphor-icons/react";
 
 type Coordinates = {
   lat: number;
@@ -132,6 +132,9 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [map, setMap] = useState<L.Map | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -237,10 +240,23 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
   const handleSelectSuggestion = (s: Suggestion) => {
     const newCoords = { lat: parseFloat(s.lat), lng: parseFloat(s.lon) };
     setCoordinates(newCoords);
+    setManualLat(newCoords.lat.toFixed(6));
+    setManualLng(newCoords.lng.toFixed(6));
     setSearch(s.display_name);
     setSuggestions([]);
     setShowSuggestions(false);
+    
+    // Update parent component immediately
     onChange(newCoords);
+    
+    // Zoom to the selected location with a slight delay to ensure map is ready
+    setTimeout(() => {
+      if (map) {
+        map.flyTo([newCoords.lat, newCoords.lng], 15, {
+          duration: 1.5
+        });
+      }
+    }, 100);
   };
 
   const clearSearch = () => {
@@ -248,6 +264,41 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
     setSuggestions([]);
     setShowSuggestions(false);
     inputRef.current?.focus();
+  };
+
+  const handleManualCoordinates = () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Please enter valid latitude and longitude values");
+      return;
+    }
+    
+    if (lat < -90 || lat > 90) {
+      alert("Latitude must be between -90 and 90");
+      return;
+    }
+    
+    if (lng < -180 || lng > 180) {
+      alert("Longitude must be between -180 and 180");
+      return;
+    }
+    
+    const newCoords = { lat, lng };
+    setCoordinates(newCoords);
+    
+    // Update parent component immediately
+    onChange(newCoords);
+    
+    // Zoom to the location with a slight delay
+    setTimeout(() => {
+      if (map) {
+        map.flyTo([lat, lng], 15, {
+          duration: 1.5
+        });
+      }
+    }, 100);
   };
 
   useEffect(() => {
@@ -259,6 +310,8 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
   useEffect(() => {
     if (value) {
       setCoordinates(value);
+      setManualLat(value.lat.toFixed(6));
+      setManualLng(value.lng.toFixed(6));
     }
   }, [value]);
 
@@ -306,8 +359,10 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
               {suggestions.map((s, idx) => (
                 <li
                   key={idx}
-                  onClick={() => handleSelectSuggestion(s)}
-                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelectSuggestion(s);
+                  }}
                   className="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm text-foreground-primary border-b border-border-secondary last:border-b-0 transition-colors"
                 >
                   <div className="flex items-start gap-2">
@@ -318,6 +373,70 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
               ))}
             </ul>
           </SearchDropdownPortal>
+        </div>
+      )}
+
+      {/* Manual Coordinate Input */}
+      {!hideSearch && (
+        <div className="mb-3 border border-border-secondary rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowManualInput(!showManualInput)}
+            className="w-full px-4 py-2.5 bg-surface-secondary hover:bg-surface-tertiary transition-colors flex items-center justify-between text-sm font-medium text-foreground-secondary"
+          >
+            <div className="flex items-center gap-2">
+              <Target size={16} weight="duotone" />
+              <span>Set Coordinates Manually</span>
+            </div>
+            <CaretDown 
+              size={16} 
+              className={`transition-transform ${showManualInput ? 'rotate-180' : ''}`} 
+            />
+          </button>
+          
+          {showManualInput && (
+            <div className="p-4 bg-surface-primary border-t border-border-secondary space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-foreground-tertiary mb-1">
+                    Latitude
+                  </label>
+                  <input
+                    type="number"
+                    value={manualLat}
+                    onChange={(e) => setManualLat(e.target.value)}
+                    step="0.000001"
+                    min="-90"
+                    max="90"
+                    placeholder="e.g. 51.505"
+                    className="w-full px-3 py-2 border border-border-secondary rounded-lg bg-background-primary text-foreground-primary focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-foreground-tertiary mb-1">
+                    Longitude
+                  </label>
+                  <input
+                    type="number"
+                    value={manualLng}
+                    onChange={(e) => setManualLng(e.target.value)}
+                    step="0.000001"
+                    min="-180"
+                    max="180"
+                    placeholder="e.g. -0.09"
+                    className="w-full px-3 py-2 border border-border-secondary rounded-lg bg-background-primary text-foreground-primary focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleManualCoordinates}
+                className="w-full px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                Apply Coordinates
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -341,20 +460,32 @@ export default function ClientMap({ value, onChange, type, hideSearch = false }:
               dragend: (e) => {
                 const marker = e.target;
                 const newPos = marker.getLatLng();
-                setCoordinates({ lat: newPos.lat, lng: newPos.lng });
-                onChange({ lat: newPos.lat, lng: newPos.lng });
+                const newCoords = { lat: newPos.lat, lng: newPos.lng };
+                setCoordinates(newCoords);
+                setManualLat(newPos.lat.toFixed(6));
+                setManualLng(newPos.lng.toFixed(6));
+                onChange(newCoords);
               },
             }}
           />
         )}
         <LocationMarker
           onSelect={(coords) => {
-            setCoordinates(coords);
-            onChange(coords);
+            const newCoords = { lat: coords.lat, lng: coords.lng };
+            setCoordinates(newCoords);
+            setManualLat(coords.lat.toFixed(6));
+            setManualLng(coords.lng.toFixed(6));
+            onChange(newCoords);
           }}
         />
-        {coordinates && <MapUpdater coordinates={coordinates} />}
+        {coordinates && <MapUpdater key={`${coordinates.lat}-${coordinates.lng}`} coordinates={coordinates} />}
       </MapContainer>
+      
+      {/* Display current coordinates */}
+      <div className="mt-2 text-sm text-foreground-tertiary flex items-center gap-4">
+        <span>Lat: {coordinates?.lat.toFixed(6) ?? 'N/A'}</span>
+        <span>Lng: {coordinates?.lng.toFixed(6) ?? 'N/A'}</span>
+      </div>
     </div>
   );
 }

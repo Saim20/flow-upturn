@@ -202,8 +202,9 @@ export async function login({
     }
   }
 
+  // Successful login - revalidate and redirect
   revalidatePath("/", "layout");
-  return { success: true };
+  redirect("/home");
 }
 
 export async function signup({

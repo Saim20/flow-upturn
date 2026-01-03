@@ -10,7 +10,7 @@ interface CollapsibleProps {
 }
 
 export default function Collapsible({ title, children }: CollapsibleProps) {
-  const [isOpen, setIsOpen] = useState(true); // Start open so data is immediately visible
+  const [isOpen, setIsOpen] = useState(false); // Start closed by default
 
   return (
     <div className="w-full rounded-xl border border-border-primary bg-background-secondary shadow-sm overflow-hidden">
@@ -33,13 +33,17 @@ export default function Collapsible({ title, children }: CollapsibleProps) {
         </motion.div>
       </button>
 
-      <motion.div
-        initial={false}
-        animate={isOpen ? "visible" : "hidden"}
-        className="overflow-hidden bg-background-secondary border-t border-border-primary"
-      >
-        <div className="p-4">{children}</div>
-      </motion.div>
+      {isOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="overflow-hidden bg-background-secondary border-t border-border-primary"
+        >
+          <div className="p-4">{children}</div>
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -78,13 +78,20 @@ const SignIn = () => {
         }
       });
       
-      if (result.error) {
+      // If login succeeds, the server action will redirect
+      // If there's an error, it will be returned here
+      if (result?.error) {
         setGeneralError("Login failed. " + result.error.message);
         setLoading(false);
-      } else if (result.success) {
-        window.location.href = "/home";
       }
     } catch (err) {
+      // Check if this is a redirect (expected behavior)
+      if (err && typeof err === 'object' && 'digest' in err && 
+          typeof (err as any).digest === 'string' && 
+          (err as any).digest.includes('NEXT_REDIRECT')) {
+        // This is a successful redirect, don't treat as error
+        return;
+      }
       setGeneralError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }

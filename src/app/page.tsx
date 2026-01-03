@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
   ClipboardText,
@@ -23,29 +22,14 @@ import {
   IdentificationCard,
   Receipt,
 } from '@phosphor-icons/react/dist/ssr';
-import { createClient } from '@/lib/supabase/server';
 
-export default async function LandingPage() {
-  // Check if user is authenticated - if so, redirect to /home
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (user) {
-    // Check if user has completed onboarding (has_approval = "ACCEPTED")
-    const { data: employee } = await supabase
-      .from('employees')
-      .select('has_approval')
-      .eq('id', user.id)
-      .single();
-    
-    if (employee?.has_approval === 'ACCEPTED') {
-      redirect('/home');
-    }
-    // If not approved, show onboarding page
-    redirect('/onboarding');
-  }
-  
-  // Not authenticated - show landing page
+// Force static generation for landing page
+export const dynamic = 'force-static';
+export const revalidate = false;
+
+export default function LandingPage() {
+  // Note: Authentication check is handled by proxy.ts
+  // Authenticated users are automatically redirected to /home
   return (
     <div className="min-h-screen bg-background-primary">
       {/* Header / Navigation */}

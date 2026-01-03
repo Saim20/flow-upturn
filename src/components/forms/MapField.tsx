@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { MapPin, MagnifyingGlass, CircleNotch, X } from "@phosphor-icons/react";
+import { MapPin, MagnifyingGlass, CircleNotch, X, CaretDown, Target } from "@phosphor-icons/react";
 
 // Dynamically import the ClientMap to avoid SSR issues
 const ClientMap = dynamic(() => import('@/components/admin/attendance/ClientMap'), { 
@@ -86,10 +86,21 @@ export const MapField: React.FC<MapFieldProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Sync manual input fields with value prop
+  useEffect(() => {
+    if (value) {
+      setManualLat(value.lat.toFixed(6));
+      setManualLng(value.lng.toFixed(6));
+    }
+  }, [value]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -179,6 +190,28 @@ export const MapField: React.FC<MapFieldProps> = ({
     inputRef.current?.focus();
   };
 
+  const handleManualCoordinates = () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Please enter valid latitude and longitude values");
+      return;
+    }
+    
+    if (lat < -90 || lat > 90) {
+      alert("Latitude must be between -90 and 90");
+      return;
+    }
+    
+    if (lng < -180 || lng > 180) {
+      alert("Longitude must be between -180 and 180");
+      return;
+    }
+    
+    onChange({ lat, lng });
+  };
+
   return (
     <div className={className} ref={containerRef}>
       <label className="block font-semibold text-foreground-secondary mb-2">
@@ -251,6 +284,68 @@ export const MapField: React.FC<MapFieldProps> = ({
           </DropdownPortal>
         </div>
       )}
+      
+      {/* Manual Coordinate Input */}
+      <div className="mb-3 border border-border-secondary rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowManualInput(!showManualInput)}
+          className="w-full px-4 py-2.5 bg-surface-secondary hover:bg-surface-tertiary transition-colors flex items-center justify-between text-sm font-medium text-foreground-secondary"
+        >
+          <div className="flex items-center gap-2">
+            <Target size={16} weight="duotone" />
+            <span>Set Coordinates Manually</span>
+          </div>
+          <CaretDown 
+            size={16} 
+            className={`transition-transform ${showManualInput ? 'rotate-180' : ''}`} 
+          />
+        </button>
+        
+        {showManualInput && (
+          <div className="p-4 bg-surface-primary border-t border-border-secondary space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground-tertiary mb-1">
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  step="0.000001"
+                  min="-90"
+                  max="90"
+                  placeholder="e.g. 51.505"
+                  className="w-full px-3 py-2 border border-border-secondary rounded-lg bg-background-primary text-foreground-primary focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground-tertiary mb-1">
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  step="0.000001"
+                  min="-180"
+                  max="180"
+                  placeholder="e.g. -0.09"
+                  className="w-full px-3 py-2 border border-border-secondary rounded-lg bg-background-primary text-foreground-primary focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleManualCoordinates}
+              className="w-full px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Apply Coordinates
+            </button>
+          </div>
+        )}
+      </div>
       
       <div className="relative">
         {isClient ? (

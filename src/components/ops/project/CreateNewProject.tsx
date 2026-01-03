@@ -184,7 +184,21 @@ export function UpdateProjectPage({
   onClose: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { createMilestone, updateMilestone } = useMilestones()
+  const [initialMilestones, setInitialMilestones] = useState<any[]>([]);
+  const { createMilestone, updateMilestone, deleteMilestone, fetchProjectMilestones } = useMilestones()
+
+  // Load initial milestones to track which ones get deleted
+  useEffect(() => {
+    const loadMilestones = async () => {
+      if (initialData.id) {
+        const milestones = await fetchProjectMilestones(initialData.id);
+        if (milestones) {
+          setInitialMilestones(milestones);
+        }
+      }
+    };
+    loadMilestones();
+  }, [initialData.id]);
 
   const handleSubmit = async (data: ProjectDetails, milestones: any) => {
     setIsSubmitting(true);
@@ -192,6 +206,20 @@ export function UpdateProjectPage({
       await onSubmit(data);
 
       const projectId = data.id;
+
+      // Find milestones that were removed (existed initially but not in current list)
+      const currentMilestoneIds = milestones
+        .filter((m: any) => m.id && !(typeof m.id === 'string' && m.id.startsWith('temp_')))
+        .map((m: any) => m.id);
+      
+      const removedMilestones = initialMilestones.filter(
+        (initialM: any) => initialM.id && !currentMilestoneIds.includes(initialM.id)
+      );
+
+      // Delete removed milestones
+      for (const removed of removedMilestones) {
+        await deleteMilestone(removed.id);
+      }
 
       if (milestones.length > 0) {
         for (const m of milestones) {
