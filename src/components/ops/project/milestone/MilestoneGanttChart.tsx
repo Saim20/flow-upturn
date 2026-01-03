@@ -372,7 +372,7 @@ const MilestoneGanttChart: React.FC<MilestoneGanttChartProps> = ({
                 style={{ left: `${marker.position}%` }}
               >
                 <div className={`h-full w-px ${marker.isMinor ? 'bg-border-primary/30' : 'bg-border-secondary/50'}`} />
-                <span className={`whitespace-nowrap ml-0.5 text-[15px] text-foreground-primary`}>
+                <span className={`whitespace-nowrap ml-0.5 text-[15px] text-foreground-secondary`}>
                   {marker.label}
                 </span>
               </div>
