@@ -63,8 +63,12 @@ export default function NoticeDetails({ id, onClose }: NoticeDetailsProps) {
 
   useEffect(() => {
     if(!notice) return;
-    fetchNoticeType(notice?.notice_type_id || "");
-    fetchDepartment(notice?.department_id || "");
+    if (notice.notice_type_id) {
+      fetchNoticeType(notice.notice_type_id);
+    }
+    if (notice.department_id) {
+      fetchDepartment(notice.department_id);
+    }
   }, [notice]);
 
   if (loadingNotice || loadingNoticeType || loadingDepartment) {

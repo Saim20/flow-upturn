@@ -30,12 +30,12 @@ export default function ProjectBreadcrumb({
   taskId,
   taskTitle,
 }: ProjectBreadcrumbProps) {
-  const [milestoneTitle, setMilestoneTitle] = useState(initialMilestoneTitle || "");
+  const [milestoneTitle, setMilestoneTitle] = useState(initialMilestoneTitle);
 
   // Fetch milestone title if not provided but ID is
   useEffect(() => {
     async function fetchMilestoneTitle() {
-      if (milestoneId && !initialMilestoneTitle) {
+      if (milestoneId && !milestoneTitle) {
         const supabase = createClient();
         const { data } = await supabase
           .from("milestones")
@@ -49,7 +49,7 @@ export default function ProjectBreadcrumb({
       }
     }
     fetchMilestoneTitle();
-  }, [milestoneId, initialMilestoneTitle]);
+  }, [milestoneId, milestoneTitle]);
 
   const breadcrumbs = useMemo(() => {
     const items: BreadcrumbItem[] = [
@@ -111,7 +111,7 @@ export default function ProjectBreadcrumb({
                 className="flex items-center gap-1.5 px-2 py-1 rounded-md text-foreground-secondary hover:text-foreground-primary hover:bg-background-tertiary dark:hover:bg-surface-secondary transition-colors duration-150"
               >
                 {item.icon}
-                <span className="max-w-[200px] truncate">{item.label}</span>
+                <span className="max-w-50 truncate">{item.label}</span>
               </Link>
             ) : (
               <span
@@ -122,7 +122,7 @@ export default function ProjectBreadcrumb({
                 }`}
               >
                 {item.icon}
-                <span className="max-w-[200px] truncate">{item.label}</span>
+                <span className="max-w-50 truncate">{item.label}</span>
               </span>
             )}
           </li>

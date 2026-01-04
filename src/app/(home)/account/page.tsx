@@ -131,11 +131,8 @@ export default function AccountPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-1">{userData.first_name} {userData.last_name}</h2>
-              <p className="text-indigo-100 mb-2">{userData.designation || userData.role}</p>
+              <p className="text-indigo-100 mb-2">{userData.designation}</p>
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="bg-indigo-400/30 py-1 px-3 rounded-full">
-                  {userData.role}
-                </span>
                 {userData.job_status && (
                   <span className={`py-1 px-3 rounded-full ${
                     userData.job_status === "Active" 

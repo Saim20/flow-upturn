@@ -34,7 +34,7 @@ function getPriorityStyle(priority: string) {
     case 'High':
       return { color: '#ea580c', label: '⚠️ High Priority', bgColor: '#fff7ed' };
     case 'Medium':
-      return { color: '#2563eb', label: 'Medium Priority', bgColor: '#eff6ff' };
+      return { color: '#2563eb', label: 'Normal Priority', bgColor: '#eff6ff' };
     case 'Low':
     default:
       return { color: '#16a34a', label: 'Low Priority', bgColor: '#f0fdf4' };

@@ -124,22 +124,6 @@ export default function MilestoneUpdateModal({
     }) || JSON.stringify(formData.assignees) !== JSON.stringify(initialData.assignees);
   };
 
-  const getMaxWeightage = () => {
-    // For updates, we need to account for the current milestone's weightage
-    return 100 - (currentTotalWeightage);
-  };
-
-  const getWeightageError = () => {
-    const maxWeightage = getMaxWeightage() + (initialData.weightage || 0);
-    if (formData.weightage != null && formData.weightage > maxWeightage) {
-      return `Weightage cannot exceed ${maxWeightage}% (Available: ${getMaxWeightage()}% + Current: ${initialData.weightage}%)`;
-    }
-    if (formData.weightage != null && formData.weightage < 1) {
-      return 'Weightage must be at least 1%';
-    }
-    return undefined;
-  };
-
 
   return (
     <BaseModal
@@ -175,8 +159,7 @@ export default function MilestoneUpdateModal({
             value={formData.weightage ?? 0}
             onChange={(e) => handleInputChange('weightage', Number(e.target.value))}
             min={1}
-            max={getMaxWeightage() + (initialData.weightage || 0)}
-            error={errors.weightage || getWeightageError()}
+            error={errors.weightage}
             placeholder="Enter weightage percentage"
             required
           />
@@ -236,15 +219,27 @@ export default function MilestoneUpdateModal({
           placeholder="Search and select assignees..."
         />
 
-        {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Current Project Weightage:</strong> {currentTotalWeightage}%
+        <div className={`rounded-lg p-4 border ${
+          currentTotalWeightage + (formData.weightage || 0) > 100
+            ? 'bg-warning/10 dark:bg-warning/20 border-warning/30 dark:border-warning/40'
+            : 'bg-info/10 dark:bg-info/20 border-info/30 dark:border-info/40'
+        }`}>
+          <p className="text-sm text-foreground-primary">
+            <strong>Other Milestones Total:</strong> {currentTotalWeightage}%
             <br />
-            <strong>Available Weightage:</strong> {getMaxWeightage()}%
+            <strong>This Milestone:</strong> {formData.weightage || 0}%
             <br />
-            <strong>Original Milestone Weightage:</strong> {initialData.weightage}%
+            <strong>Project Total:</strong> {currentTotalWeightage + (formData.weightage || 0)}%
+            <br />
+            <strong>Remaining:</strong> {100 - (currentTotalWeightage + (formData.weightage || 0))}%
+            {currentTotalWeightage + (formData.weightage || 0) > 100 && (
+              <>
+                <br />
+                <span className="text-warning-700 dark:text-warning-300">⚠️ Total exceeds 100%. Adjust before publishing.</span>
+              </>
+            )}
           </p>
-        </div> */}
+        </div>
       </div>
 
 

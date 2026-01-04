@@ -20,7 +20,7 @@ interface TaskCreateModalProps {
 
 const priorityOptions = [
   { value: 'low', label: 'Low' },
-  { value: 'normal', label: 'Medium' },
+  { value: 'normal', label: 'Normal' },
   { value: 'high', label: 'High' },
   { value: 'urgent', label: 'Urgent' }
 ];
@@ -130,7 +130,6 @@ export default function TaskCreateModal({
           placeholder="Enter task description"
           error={errors.task_description}
           rows={3}
-          required
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -150,7 +149,6 @@ export default function TaskCreateModal({
             onChange={(e) => handleInputChange('end_date', e.target.value)}
             error={errors.end_date}
             required
-            min={formData.start_date || undefined}
           />
 
           <SelectField

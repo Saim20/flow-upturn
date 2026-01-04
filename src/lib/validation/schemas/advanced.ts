@@ -259,7 +259,7 @@ export function validateTask(data: TaskData): ValidationResult<TaskData> {
   const titleError = validateString(data.task_title, 'task_title', { required: true, minLength: 2, maxLength: 200 });
   if (titleError) errors.push(titleError);
 
-  const descriptionError = validateString(data.task_description, 'task_description', { required: true, minLength: 1, maxLength: 1000 });
+  const descriptionError = validateString(data.task_description, 'task_description', { required: false, minLength: 1, maxLength: 1000 });
   if (descriptionError) errors.push(descriptionError);
 
   const priorityError = validateRequired(data.priority, 'priority');
@@ -287,8 +287,8 @@ export function validateTask(data: TaskData): ValidationResult<TaskData> {
   }
 
   // Validate date logic
-  if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
-    errors.push({ field: 'end_date', message: 'End date must be after start date' });
+  if (data.start_date && data.end_date && new Date(data.start_date) > new Date(data.end_date)) {
+    errors.push({ field: 'end_date', message: 'End date cannot be before start date' });
   }
 
   // Validate assignees (required array)

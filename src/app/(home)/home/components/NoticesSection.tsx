@@ -166,47 +166,47 @@ export default function NoticesSection({
               filteredNotices.map((item) => {
                 const isRead = item.id ? readNotices.has(item.id) : false;
                 return (
-                  <motion.li 
+                    <motion.li 
                     key={item.id} 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: 0.05 }}
                     onClick={() => item.id && handleNoticeClick(item.id)}
-                    className={`flex justify-between items-center p-3 rounded-lg hover:bg-primary-50 transition-colors border-b border-border-primary last:border-b-0 cursor-pointer ${
+                    className={`flex justify-between items-center p-3 rounded-lg hover:bg-surface-hover transition-colors border-b border-border-primary last:border-b-0 cursor-pointer ${
                       isRead ? 'opacity-70' : ''
                     }`}
-                  >
+                    >
                     <div className="flex items-center gap-3">
                       {!isRead && (
-                        <div className="w-2 h-2 bg-primary-500 rounded-full shrink-0" />
+                      <div className="w-2 h-2 bg-primary-500 rounded-full shrink-0" />
                       )}
                       <span className={`font-medium ${
-                        isRead ? 'text-foreground-secondary' : 'text-foreground-primary'
+                      isRead ? 'text-foreground-secondary' : 'text-foreground-primary'
                       }`}>
-                        {item.title}
+                      {item.title}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       {(item.urgency === "high" || item.urgency === "urgent") && (
-                        <div className="bg-error/10 text-error dark:bg-error/20 text-xs px-2 py-1 rounded-full flex items-center">
-                          <WarningCircle size={12} className="mr-1" />
-                          {item.urgency === "urgent" ? "Urgent" : "High"}
-                        </div>
+                      <div className="bg-error/10 text-error text-xs px-2 py-1 rounded-full flex items-center">
+                        <WarningCircle size={12} className="mr-1" />
+                        {item.urgency === "urgent" ? "Urgent" : "High"}
+                      </div>
                       )}
                       {item.urgency === "normal" && (
-                        <div className="bg-warning/10 text-warning dark:bg-warning/20 text-xs px-2 py-1 rounded-full flex items-center">
-                          <WarningCircle size={12} className="mr-1" />
-                          Normal
-                        </div>
+                      <div className="bg-warning/10 text-warning text-xs px-2 py-1 rounded-full flex items-center">
+                        <WarningCircle size={12} className="mr-1" />
+                        Normal
+                      </div>
                       )}
                       {item.urgency === "low" && (
-                        <div className="bg-success/10 text-success dark:bg-success/20 text-xs px-2 py-1 rounded-full flex items-center">
-                          <WarningCircle size={12} className="mr-1" />
-                          Low
-                        </div>
+                      <div className="bg-success/10 text-success text-xs px-2 py-1 rounded-full flex items-center">
+                        <WarningCircle size={12} className="mr-1" />
+                        Low
+                      </div>
                       )}
                     </div>
-                  </motion.li>
+                    </motion.li>
                 );
               })
             ) : (

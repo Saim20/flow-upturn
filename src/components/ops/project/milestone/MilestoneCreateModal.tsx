@@ -82,18 +82,6 @@ export default function MilestoneCreateModal({
     return validation.success;
   };
 
-  const getMaxWeightage = () => {
-    return 100 - currentTotalWeightage;
-  };
-
-  const getWeightageError = () => {
-    const maxWeightage = getMaxWeightage();
-    if (formData.weightage != null && formData.weightage > maxWeightage) {
-      return `Weightage cannot exceed ${maxWeightage}% (Current total: ${currentTotalWeightage}%)`;
-    }
-    return undefined;
-  };
-
   return (
     <BaseModal
       isOpen={true}
@@ -149,8 +137,7 @@ export default function MilestoneCreateModal({
             value={formData.weightage ?? 0}
             onChange={(value) => handleInputChange('weightage', value)}
             min={0}
-            max={getMaxWeightage()}
-            error={errors.weightage || getWeightageError()}
+            error={errors.weightage}
             placeholder="Enter weightage percentage"
             required
           />
@@ -176,15 +163,27 @@ export default function MilestoneCreateModal({
           placeholder="Search and select assignees..."
         />
 
-        {currentTotalWeightage > 0 && (
-          <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4">
-            <p className="text-sm text-foreground-primary">
-              <strong>Current Project Weightage:</strong> {currentTotalWeightage}%
-              <br />
-              <strong>Available Weightage:</strong> {getMaxWeightage()}%
-            </p>
-          </div>
-        )}
+        <div className={`rounded-lg p-4 border ${
+          currentTotalWeightage + (formData.weightage || 0) > 100
+            ? 'bg-warning/10 dark:bg-warning/20 border-warning/30 dark:border-warning/40'
+            : 'bg-info/10 dark:bg-info/20 border-info/30 dark:border-info/40'
+        }`}>
+          <p className="text-sm text-foreground-primary">
+            <strong>Current Project Weightage:</strong> {currentTotalWeightage}%
+            <br />
+            <strong>This Milestone:</strong> {formData.weightage || 0}%
+            <br />
+            <strong>Total After Adding:</strong> {currentTotalWeightage + (formData.weightage || 0)}%
+            <br />
+            <strong>Remaining:</strong> {100 - (currentTotalWeightage + (formData.weightage || 0))}%
+            {currentTotalWeightage + (formData.weightage || 0) > 100 && (
+              <>
+                <br />
+                <span className="text-warning-700 dark:text-warning-300">⚠️ Total exceeds 100%. Adjust before publishing.</span>
+              </>
+            )}
+          </p>
+        </div>
       </div>
 
       <div className="flex justify-end mt-8 gap-4">
@@ -201,7 +200,7 @@ export default function MilestoneCreateModal({
           variant="primary"
           onClick={handleSubmit}
           isLoading={isLoading}
-          disabled={!isFormValid() || !!getWeightageError() || isLoading}
+          disabled={!isFormValid() || isLoading}
         >
           Create Milestone
         </Button>

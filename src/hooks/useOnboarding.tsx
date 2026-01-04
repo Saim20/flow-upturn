@@ -61,7 +61,6 @@ export interface UserOnboardingInfo {
     job_status: string;
     hire_date: string;
     company_id: number;
-    role: string;
   };
   companyData: {
     name: string;

@@ -57,7 +57,6 @@ export interface WidgetDefinition {
   defaultSize: WidgetSize;
   minSize?: WidgetSize;
   maxSize?: WidgetSize;
-  requiresRole?: ('employee' | 'manager' | 'admin')[]; // Role-based access
   component: React.ComponentType<WidgetProps>;
 }
 

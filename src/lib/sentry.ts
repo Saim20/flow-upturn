@@ -25,7 +25,6 @@ export function useSentryUser() {
       // Set additional context for the employee
       Sentry.setContext("employee", {
         company_id: employeeInfo.company_id,
-        role: employeeInfo.role,
         designation: employeeInfo.designation,
         department_id: employeeInfo.department_id,
         has_approval: employeeInfo.has_approval,
@@ -33,7 +32,6 @@ export function useSentryUser() {
 
       // Set tags for filtering in Sentry dashboard
       Sentry.setTag("company_id", String(employeeInfo.company_id));
-      Sentry.setTag("user_role", employeeInfo.role);
     } else {
       Sentry.setUser(null);
     }

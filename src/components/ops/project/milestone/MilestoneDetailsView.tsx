@@ -26,6 +26,7 @@ interface MilestoneDetailsViewProps {
   onClose: () => void;
   project_created_by: string;
   employees: EmployeeBasic[];
+  milestoneDetails: Milestone | null;
 }
 
 function formatDate(dateStr: string): string {
@@ -43,14 +44,13 @@ function formatDate(dateStr: string): string {
 export default function MilestoneDetailsView({
   id,
   projectId,
-  onClose,
-  project_created_by,
   employees,
+  milestoneDetails: initialMilestoneDetails,
 }: MilestoneDetailsViewProps) {
   const [milestoneId] = useState<number>(id);
-  const [milestoneDetails, setMilestoneDetails] = useState<Milestone | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [milestoneDetails] = useState<Milestone | null>(initialMilestoneDetails);
+  const [loading] = useState<boolean>(false);
+  const [error] = useState<string | null>(null);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState<boolean>(false);
@@ -168,37 +168,6 @@ export default function MilestoneDetailsView({
     return assignees ? assignees.length : 0;
   };
 
-  async function fetchMilestoneDetails(id: number) {
-    setLoading(true);
-    const client = createClient();
-    const company_id = await getCompanyId();
-
-    try {
-      const { data, error } = await client
-        .from("milestone_records")
-        .select("*")
-        .eq("id", id)
-        .eq("company_id", company_id);
-
-      if (error) {
-        setError("Error fetching milestone details");
-        captureSupabaseError(error, "fetchMilestoneDetails", { milestoneId: id, companyId: company_id });
-        return;
-      }
-
-      setMilestoneDetails(data[0]);
-    } catch (error) {
-      setError("Error fetching milestone details");
-      captureSupabaseError(
-        { message: error instanceof Error ? error.message : String(error) },
-        "fetchMilestoneDetails",
-        { milestoneId: id }
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function fetchTasksByMilestoneId(id: number) {
     setLoadingTasks(true);
     const client = createClient();
@@ -236,14 +205,13 @@ export default function MilestoneDetailsView({
 
   useEffect(() => {
     if (id) {
-      fetchMilestoneDetails(id);
       fetchTasksByMilestoneId(id);
     }
   }, [id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <LoadingSpinner />
       </div>
     );
@@ -251,7 +219,7 @@ export default function MilestoneDetailsView({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-error">
+      <div className="flex items-center justify-center min-h-100 text-error">
         <p>{error}</p>
       </div>
     );

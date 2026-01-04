@@ -20,17 +20,14 @@ export const TEST_USERS = {
     admin: {
         email: process.env.TEST_ADMIN_EMAIL || 'annonymous.sakibulhasan@gmail.com',
         password: process.env.TEST_ADMIN_PASSWORD || 'Test@flow1234',
-        role: 'admin' as const,
     },
     user: {
         email: process.env.TEST_USER_EMAIL || 'annonymous.sakibulhasan@gmail.com',
         password: process.env.TEST_USER_PASSWORD || 'Test@flow1234',
-        role: 'user' as const,
     },
     manager: {
         email: process.env.TEST_MANAGER_EMAIL || 'annonymous.sakibulhasan@gmail.com',
         password: process.env.TEST_MANAGER_PASSWORD || 'Test@flow1234',
-        role: 'manager' as const,
     },
 };
 
