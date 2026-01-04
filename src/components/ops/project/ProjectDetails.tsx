@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useMilestones, calculateProjectProgress } from "@/hooks/useMilestones";
 import { useComments } from "@/hooks/useComments";
 import { formatDate } from "@/lib/utils";
@@ -101,6 +101,10 @@ export default function ProjectDetails({
   const canDeleteMilestones = canDelete(PERMISSION_MODULES.MILESTONES);
 
   const { updateProject } = useProjects()
+  
+  // Prevent re-fetching on tab switch
+  const hasInitialized = useRef(false);
+  const lastFetchedProjectId = useRef<string | null>(null);
 
   useEffect(() => {
     async function fetchUserId() {
@@ -131,9 +135,18 @@ export default function ProjectDetails({
 
 
   useEffect(() => {
+    // Skip if already initialized with the same project ID
+    if (hasInitialized.current && lastFetchedProjectId.current === projectId) {
+      return;
+    }
+    
     fetchProjectDetails(projectId);
     fetchMilestonesByProjectId(projectId);
     getProjectTasks(projectId, TaskStatus.INCOMPLETE);
+    
+    // Mark as initialized
+    hasInitialized.current = true;
+    lastFetchedProjectId.current = projectId;
   }, [projectId, getProjectTasks]);
 
   const router = useRouter()

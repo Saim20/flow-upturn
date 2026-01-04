@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Archive, FolderPlus, Folder, FolderOpen, FolderDashed } from "@phosphor-icons/react";
 import TabView, { TabItem } from "@/components/ui/TabView";
 import { fadeInUp } from "@/components/ui/animations";
-import { getEmployeeInfo } from "@/lib/utils/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import CompletedProjectsList from "@/components/ops/project/CompletedProjectsList";
@@ -61,52 +60,49 @@ export default function ProjectLayout({
     const router = useRouter();
     const searchParams = useSearchParams();
     const { canWrite } = useAuth();
+    const pathname = usePathname();
 
     const [activeTab, setActiveTab] = useState(initialActiveTab);
     const [tabs, setTabs] = useState<TabItem[]>([]);
+    
+    // Track initial tab setup
+    const hasSetupTabs = useRef(false);
 
-    // 🔹 Sync tab from URL
-    const pathname = usePathname();
-
+    // Sync tab from URL - only when URL changes
     useEffect(() => {
-        // Only run on the main /ops/project route
         if (pathname === "/ops/project") {
             const urlTab = searchParams.get("tab");
-            if (urlTab) {
+            if (urlTab && urlTab !== activeTab) {
                 setActiveTab(urlTab);
-            } else {
+            } else if (!urlTab) {
                 router.replace(`/ops/project?tab=${initialActiveTab}`);
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pathname, searchParams]);
+    }, [pathname, searchParams, activeTab, initialActiveTab, router]);
 
+    // Memoize tab change handler
+    const handleTabChange = useCallback((tab: string) => {
+        router.push(`/ops/project?tab=${tab}`);
+        setActiveTab(tab);
+    }, [router]);
 
-    // 🔹 Fetch user and set visible tabs
-    useEffect(() => {
-        async function fetchUserData() {
-            try {
-                // Filter tabs based on permissions
-                const hasWritePermission = canWrite(PERMISSION_MODULES.PROJECTS);
-                const visibleTabs = hasWritePermission
-                        ? TABS
-                        : TABS.filter((tab) => tab.key !== "create" && tab.key !== "drafts");
+    // Memoize archived content
+    const archivedContent = useMemo(() => (
+        <div className="flex flex-col items-center justify-center p-12 bg-background-secondary dark:bg-background-tertiary rounded-xl border border-border-primary text-center">
+            <Archive className="h-16 w-16 text-foreground-tertiary mb-4" />
+            <h3 className="text-xl font-semibold text-foreground-primary mb-2">
+                Archived Projects
+            </h3>
+            <p className="text-foreground-secondary max-w-md mb-6">
+                This section stores projects that are no longer active but kept
+                for reference purposes.
+            </p>
+            <p className="text-foreground-tertiary text-sm">Feature coming soon...</p>
+        </div>
+    ), []);
 
-                setTabs(
-                    visibleTabs.map((tab) => ({
-                        ...tab,
-                        content: getTabContent(tab.key),
-                    }))
-                );
-            } catch (error) {
-                console.error("Failed to fetch user data:", error);
-            }
-        }
-        fetchUserData();
-    }, [canWrite]);
-
-    // 🔹 Tab content mapper
-    function getTabContent(key: string) {
+    // Tab content mapper - memoized
+    const getTabContent = useCallback((key: string) => {
         switch (key) {
             case "create":
                 return <CreateNewProjectPage setActiveTab={setActiveTab} />;
@@ -117,23 +113,29 @@ export default function ProjectLayout({
             case "drafts":
                 return <DraftProjectsList setActiveTab={setActiveTab} />;
             case "archived":
-                return (
-                    <div className="flex flex-col items-center justify-center p-12 bg-background-secondary dark:bg-background-tertiary rounded-xl border border-border-primary text-center">
-                        <Archive className="h-16 w-16 text-foreground-tertiary mb-4" />
-                        <h3 className="text-xl font-semibold text-foreground-primary mb-2">
-                            Archived Projects
-                        </h3>
-                        <p className="text-foreground-secondary max-w-md mb-6">
-                            This section stores projects that are no longer active but kept
-                            for reference purposes.
-                        </p>
-                        <p className="text-foreground-tertiary text-sm">Feature coming soon...</p>
-                    </div>
-                );
+                return archivedContent;
             default:
                 return <ProjectsList setActiveTab={setActiveTab} />;
         }
-    }
+    }, [archivedContent]);
+
+    // Setup tabs once based on permissions
+    useEffect(() => {
+        if (hasSetupTabs.current) return;
+        hasSetupTabs.current = true;
+        
+        const hasWritePermission = canWrite(PERMISSION_MODULES.PROJECTS);
+        const visibleTabs = hasWritePermission
+            ? TABS
+            : TABS.filter((tab) => tab.key !== "create" && tab.key !== "drafts");
+
+        setTabs(
+            visibleTabs.map((tab) => ({
+                ...tab,
+                content: getTabContent(tab.key),
+            }))
+        );
+    }, [canWrite, getTabContent]);
 
     return (
         <motion.section
@@ -163,10 +165,7 @@ export default function ProjectLayout({
                     <TabView
                         tabs={tabs}
                         activeTab=""
-                        setActiveTab={(tab) => {
-                            router.push(`/ops/project?tab=${tab}`);
-                            setActiveTab(tab);
-                        }}
+                        setActiveTab={handleTabChange}
                         tutorialPrefix="project"
                     />
                     {overrideContent}
@@ -175,10 +174,7 @@ export default function ProjectLayout({
                 <TabView
                     tabs={tabs}
                     activeTab={activeTab}
-                    setActiveTab={(tab) => {
-                        router.push(`/ops/project?tab=${tab}`);
-                        setActiveTab(tab);
-                    }}
+                    setActiveTab={handleTabChange}
                     tutorialPrefix="project"
                 />
             )}

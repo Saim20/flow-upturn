@@ -5,6 +5,7 @@ import { useBaseEntity } from "./core";
 import { Department } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/auth-context";
+import { departmentCache } from "@/lib/utils/requestCache";
 
 export type { Department };
 
@@ -21,32 +22,34 @@ export function useDepartments() {
 
   // Manual fetch all departments
   const fetchDepartments = useCallback(async (company_id?: number | undefined) => {
+    const companyId = company_id ?? employeeInfo?.company_id;
+    if (!companyId) {
+      setDepartments([]);
+      return [];
+    }
+
     try {
       setLoading(true);
-      const supabase = await createClient();
-      const companyId = company_id ?? employeeInfo?.company_id;
-      if (!companyId) {
-        setDepartments([]);
-        setLoading(false);
-        return [];
-      }
+      const cacheKey = `all-${companyId}`;
+      
+      const data = await departmentCache.fetch<Department[]>(cacheKey, async () => {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+          .from("departments")
+          .select("*")
+          .eq("company_id", companyId);
 
-      const { data, error } = await supabase
-        .from("departments")
-        .select("*")
-        .eq("company_id", companyId);
+        if (error) throw error;
+        return data || [];
+      });
 
-      if (error) throw error;
-
-      setDepartments(data || []);
-      setLoading(false);
-
-      return data || [];
+      setDepartments(data);
+      return data;
     } catch (error) {
-      console.error("Error fetching departments:", error);
       setDepartments([]);
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [employeeInfo?.company_id]);
 
@@ -86,14 +89,15 @@ export function useDepartments() {
           .eq("id", data.head_id);
       }
 
+      // Invalidate cache and re-fetch
+      departmentCache.invalidateAll();
       await fetchDepartments();
-      setLoading(false);
 
       return data;
     } catch (error) {
-      console.error("Error creating department:", error);
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [authLoading, user, employeeInfo?.company_id, fetchDepartments]);
 
@@ -125,14 +129,15 @@ export function useDepartments() {
           .eq("id", dept.head_id);
       }
 
-      await fetchDepartments()
-      setLoading(false)
+      // Invalidate cache and re-fetch
+      departmentCache.invalidateAll();
+      await fetchDepartments();
 
       return data;
     } catch (error) {
-      console.error("Error updating department:", error);
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [authLoading, user, fetchDepartments]);
 
@@ -162,16 +167,24 @@ export function useDepartments() {
 
       if (error) throw error;
 
-      await fetchDepartments()
-      setLoading(false)
+      // Invalidate cache and re-fetch
+      departmentCache.invalidateAll();
+      await fetchDepartments();
 
       return data;
     } catch (error) {
-      console.error("Error deleting department:", error);
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [authLoading, user, fetchDepartments]);
+
+  /**
+   * Invalidate department cache - call after external mutations
+   */
+  const invalidateDepartmentCache = useCallback(() => {
+    departmentCache.invalidateAll();
+  }, []);
 
   return {
     ...baseResult,
@@ -183,5 +196,6 @@ export function useDepartments() {
     createDepartment,
     updateDepartment,
     deleteDepartment,
+    invalidateDepartmentCache,
   }
 }

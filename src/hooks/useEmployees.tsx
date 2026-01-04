@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { Employee } from "@/lib/types/schemas";
 import { captureSupabaseError } from "@/lib/sentry";
 import { ACTIVE_STATUSES, OFFBOARDED_STATUSES } from "@/lib/constants";
+import { employeeCache } from "@/lib/utils/requestCache";
 
 export interface ExtendedEmployee extends Employee {
   role?: string;
@@ -30,30 +31,34 @@ export function useEmployees() {
    * Use this for most employee selections and listings
    */
   const fetchEmployees = useCallback(async (company_id?: number) => {
+    const companyId = company_id ?? employeeInfo?.company_id;
+    if (!companyId) {
+      return [];
+    }
+
     setLoading(true);
     setError(null);
-    const companyId = company_id ?? employeeInfo?.company_id;
+    
     try {
-      if (!companyId) {
-        setLoading(false);
-        return [];
-      }
+      const cacheKey = `active-${companyId}`;
+      
+      const employees = await employeeCache.fetch<Employee[]>(cacheKey, async () => {
+        const { data, error } = await supabase
+          .from("employees")
+          .select("id, first_name, last_name, email, designation, department_id(name)")
+          .eq("company_id", companyId)
+          .in("job_status", ACTIVE_STATUSES);
 
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name, email, designation, department_id(name)")
-        .eq("company_id", companyId)
-        .in("job_status", ACTIVE_STATUSES);
+        if (error) throw error;
 
-      if (error) throw error;
-
-      const employees: Employee[] = data?.map((employee) => ({
-        id: employee.id,
-        name: `${employee.first_name} ${employee.last_name}`,
-        email: employee.email,
-        designation: employee.designation || undefined,
-        department: (employee.department_id as unknown as { name: string })?.name || undefined
-      })) || [];
+        return data?.map((employee) => ({
+          id: employee.id,
+          name: `${employee.first_name} ${employee.last_name}`,
+          email: employee.email,
+          designation: employee.designation || undefined,
+          department: (employee.department_id as unknown as { name: string })?.name || undefined
+        })) || [];
+      });
 
       setEmployees(employees);
       return employees;
@@ -65,7 +70,6 @@ export function useEmployees() {
         "fetchEmployees",
         { companyId }
       );
-      console.error("Error fetching employees:", errorObj);
       return [];
     } finally {
       setLoading(false);
@@ -77,42 +81,46 @@ export function useEmployees() {
    * Includes additional fields like phone, join date, salary, supervisor
    */
   const fetchExtendedEmployees = useCallback(async () => {
+    const companyId = employeeInfo?.company_id;
+    if (!companyId) {
+      return [];
+    }
+
     setLoading(true);
     setError(null);
+    
     try {
-      const companyId = employeeInfo?.company_id;
-      if (!companyId) {
-        setLoading(false);
-        return [];
-      }
+      const cacheKey = `extended-${companyId}`;
+      
+      const employees = await employeeCache.fetch<ExtendedEmployee[]>(cacheKey, async () => {
+        const { data, error } = await supabase
+          .from("employees")
+          .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id, job_status")
+          .eq("company_id", companyId)
+          .in("job_status", ACTIVE_STATUSES);
 
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id, job_status")
-        .eq("company_id", companyId)
-        .in("job_status", ACTIVE_STATUSES);
+        if (error) throw error;
 
-      if (error) throw error;
+        // Create a map for quick supervisor name lookup
+        const employeeMap = new Map<string, string>();
+        data?.forEach((emp) => {
+          employeeMap.set(emp.id, `${emp.first_name} ${emp.last_name}`);
+        });
 
-      // Create a map for quick supervisor name lookup
-      const employeeMap = new Map<string, string>();
-      data?.forEach((emp) => {
-        employeeMap.set(emp.id, `${emp.first_name} ${emp.last_name}`);
+        return data?.map((employee) => ({
+          id: employee.id,
+          name: `${employee.first_name} ${employee.last_name}`,
+          email: employee.email,
+          designation: employee.designation || undefined,
+          department: (employee.department_id as unknown as { name: string })?.name || undefined,
+          phone: employee.phone_number,
+          joinDate: employee.hire_date,
+          basic_salary: employee.basic_salary,
+          supervisor_id: employee.supervisor_id,
+          supervisor_name: employee.supervisor_id ? employeeMap.get(employee.supervisor_id) || "Unknown" : undefined,
+          job_status: employee.job_status,
+        })) || [];
       });
-
-      const employees: ExtendedEmployee[] = data?.map((employee) => ({
-        id: employee.id,
-        name: `${employee.first_name} ${employee.last_name}`,
-        email: employee.email,
-        designation: employee.designation || undefined,
-        department: (employee.department_id as unknown as { name: string })?.name || undefined,
-        phone: employee.phone_number,
-        joinDate: employee.hire_date,
-        basic_salary: employee.basic_salary,
-        supervisor_id: employee.supervisor_id,
-        supervisor_name: employee.supervisor_id ? employeeMap.get(employee.supervisor_id) || "Unknown" : undefined,
-        job_status: employee.job_status,
-      })) || [];
 
       setExtendedEmployees(employees);
       return employees;
@@ -124,7 +132,6 @@ export function useEmployees() {
         "fetchExtendedEmployees",
         { companyId: employeeInfo?.company_id }
       );
-      console.error("Error fetching employees:", errorObj);
       return [];
     } finally {
       setLoading(false);
@@ -135,48 +142,52 @@ export function useEmployees() {
    * Fetch offboarded employees (Resigned/Terminated) for viewing in dedicated section
    */
   const fetchOffboardedEmployees = useCallback(async () => {
+    const companyId = employeeInfo?.company_id;
+    if (!companyId) {
+      return [];
+    }
+
     setLoading(true);
     setError(null);
+    
     try {
-      const companyId = employeeInfo?.company_id;
-      if (!companyId) {
-        setLoading(false);
-        return [];
-      }
+      const cacheKey = `offboarded-${companyId}`;
+      
+      const employees = await employeeCache.fetch<ExtendedEmployee[]>(cacheKey, async () => {
+        const { data, error } = await supabase
+          .from("employees")
+          .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id, job_status")
+          .eq("company_id", companyId)
+          .in("job_status", OFFBOARDED_STATUSES)
+          .order("first_name", { ascending: true });
 
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name, email, phone_number, department_id(name), designation, hire_date, basic_salary, supervisor_id, job_status")
-        .eq("company_id", companyId)
-        .in("job_status", OFFBOARDED_STATUSES)
-        .order("first_name", { ascending: true });
+        if (error) throw error;
 
-      if (error) throw error;
+        // Create a map for quick supervisor name lookup - fetch all employees for supervisor lookup
+        const { data: allEmployees } = await supabase
+          .from("employees")
+          .select("id, first_name, last_name")
+          .eq("company_id", companyId);
 
-      // Create a map for quick supervisor name lookup - fetch all employees for supervisor lookup
-      const { data: allEmployees } = await supabase
-        .from("employees")
-        .select("id, first_name, last_name")
-        .eq("company_id", companyId);
+        const employeeMap = new Map<string, string>();
+        allEmployees?.forEach((emp) => {
+          employeeMap.set(emp.id, `${emp.first_name} ${emp.last_name}`);
+        });
 
-      const employeeMap = new Map<string, string>();
-      allEmployees?.forEach((emp) => {
-        employeeMap.set(emp.id, `${emp.first_name} ${emp.last_name}`);
+        return data?.map((employee) => ({
+          id: employee.id,
+          name: `${employee.first_name} ${employee.last_name}`,
+          email: employee.email,
+          designation: employee.designation || undefined,
+          department: (employee.department_id as unknown as { name: string })?.name || undefined,
+          phone: employee.phone_number,
+          joinDate: employee.hire_date,
+          basic_salary: employee.basic_salary,
+          supervisor_id: employee.supervisor_id,
+          supervisor_name: employee.supervisor_id ? employeeMap.get(employee.supervisor_id) || "Unknown" : undefined,
+          job_status: employee.job_status,
+        })) || [];
       });
-
-      const employees: ExtendedEmployee[] = data?.map((employee) => ({
-        id: employee.id,
-        name: `${employee.first_name} ${employee.last_name}`,
-        email: employee.email,
-        designation: employee.designation || undefined,
-        department: (employee.department_id as unknown as { name: string })?.name || undefined,
-        phone: employee.phone_number,
-        joinDate: employee.hire_date,
-        basic_salary: employee.basic_salary,
-        supervisor_id: employee.supervisor_id,
-        supervisor_name: employee.supervisor_id ? employeeMap.get(employee.supervisor_id) || "Unknown" : undefined,
-        job_status: employee.job_status,
-      })) || [];
 
       setOffboardedEmployees(employees);
       return employees;
@@ -188,7 +199,6 @@ export function useEmployees() {
         "fetchOffboardedEmployees",
         { companyId: employeeInfo?.company_id }
       );
-      console.error("Error fetching offboarded employees:", errorObj);
       return [];
     } finally {
       setLoading(false);
@@ -245,11 +255,17 @@ export function useEmployees() {
         "fetchEmployeesByIds",
         { ids: uniqueIds }
       );
-      console.error("Error fetching employees by IDs:", errorObj);
       return [];
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  /**
+   * Invalidate employee cache - call after mutations (add/update/delete employee)
+   */
+  const invalidateEmployeeCache = useCallback(() => {
+    employeeCache.invalidateAll();
   }, []);
 
   return useMemo(() => ({
@@ -262,5 +278,6 @@ export function useEmployees() {
     fetchExtendedEmployees,
     fetchOffboardedEmployees,
     fetchEmployeesByIds,
-  }), [employees, extendedEmployees, offboardedEmployees, loading, error, fetchEmployees, fetchExtendedEmployees, fetchOffboardedEmployees, fetchEmployeesByIds]);
+    invalidateEmployeeCache,
+  }), [employees, extendedEmployees, offboardedEmployees, loading, error, fetchEmployees, fetchExtendedEmployees, fetchOffboardedEmployees, fetchEmployeesByIds, invalidateEmployeeCache]);
 }

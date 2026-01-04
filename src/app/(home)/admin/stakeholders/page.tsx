@@ -125,7 +125,7 @@ export default function StakeholdersPage() {
           disabled={loading || stakeholders.length === 0}
           className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-success text-white rounded-lg hover:bg-success/90 active:bg-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
+          <Download size={16} className="sm:w-4.5 sm:h-4.5" />
           <span>Export</span>
         </button>
       </PageHeader>

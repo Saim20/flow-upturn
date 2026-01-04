@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { navItems } from "@/app/(home)/nav-items";
@@ -187,26 +187,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @param action - Permission action (e.g., 'can_read', 'can_write', 'can_delete', 'can_approve', 'can_comment')
    * @returns True if user has the permission, false otherwise
    */
-  const hasPermission = (module: string, action: string): boolean => {
+  const hasPermission = useCallback((module: string, action: string): boolean => {
     if (!permissions[module]) return false;
     const actionKey = action as keyof typeof permissions[typeof module];
     return permissions[module][actionKey] === true;
-  };
+  }, [permissions]);
 
   /** Check if user can read from a module */
-  const canRead = (module: string): boolean => hasPermission(module, 'can_read');
+  const canRead = useCallback((module: string): boolean => hasPermission(module, 'can_read'), [hasPermission]);
   
   /** Check if user can write to a module */
-  const canWrite = (module: string): boolean => hasPermission(module, 'can_write');
+  const canWrite = useCallback((module: string): boolean => hasPermission(module, 'can_write'), [hasPermission]);
   
   /** Check if user can delete from a module */
-  const canDelete = (module: string): boolean => hasPermission(module, 'can_delete');
+  const canDelete = useCallback((module: string): boolean => hasPermission(module, 'can_delete'), [hasPermission]);
   
   /** Check if user can approve in a module */
-  const canApprove = (module: string): boolean => hasPermission(module, 'can_approve');
+  const canApprove = useCallback((module: string): boolean => hasPermission(module, 'can_approve'), [hasPermission]);
   
   /** Check if user can comment in a module */
-  const canComment = (module: string): boolean => hasPermission(module, 'can_comment');
+  const canComment = useCallback((module: string): boolean => hasPermission(module, 'can_comment'), [hasPermission]);
 
   /**
    * Refresh user permissions from the server
@@ -257,7 +257,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @param module - Module name
    * @returns True if user has at least one permission for the module
    */
-  const hasAnyPermission = (module: string): boolean => {
+  /**
+   * Check if user has any permission for a module
+   * @param module - Module name
+   * @returns True if user has at least one permission for the module
+   */
+  const hasAnyPermission = useCallback((module: string): boolean => {
     if (!permissions[module]) return false;
     
     const modulePerms = permissions[module];
@@ -266,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            modulePerms.can_delete || 
            modulePerms.can_approve || 
            modulePerms.can_comment;
-  };
+  }, [permissions]);
 
   /**
    * Check if user has all specified permissions for a module
@@ -274,9 +279,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @param actions - Array of permission actions to check
    * @returns True if user has all specified permissions
    */
-  const hasAllPermissions = (module: string, actions: string[]): boolean => {
+  const hasAllPermissions = useCallback((module: string, actions: string[]): boolean => {
     return actions.every(action => hasPermission(module, action));
-  };
+  }, [hasPermission]);
 
   /**
    * Check if user has any of the specified permissions for a module
@@ -284,35 +289,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @param actions - Array of permission actions to check
    * @returns True if user has at least one of the specified permissions
    */
-  const hasAnyOfPermissions = (module: string, actions: string[]): boolean => {
+  const hasAnyOfPermissions = useCallback((module: string, actions: string[]): boolean => {
     return actions.some(action => hasPermission(module, action));
-  };
+  }, [hasPermission]);
 
   /**
    * Get all modules the user has access to
    * @returns Array of module names the user can access
    */
-  const getAccessibleModules = (): string[] => {
+  const getAccessibleModules = useCallback((): string[] => {
     return Object.keys(permissions).filter(module => hasAnyPermission(module));
-  };
+  }, [permissions, hasAnyPermission]);
 
   /**
    * Get all modules where user has a specific action
    * @param action - Permission action (e.g., 'can_write', 'can_approve')
    * @returns Array of module names where user has the specified action
    */
-  const getModulesWithAction = (action: string): string[] => {
+  const getModulesWithAction = useCallback((action: string): string[] => {
     return Object.keys(permissions).filter(module => 
       hasPermission(module, action)
     );
-  };
+  }, [permissions, hasPermission]);
 
   /**
    * Get full permission object for a module
    * @param module - Module name
    * @returns Permission object with all actions for the module
    */
-  const getModulePermissions = (module: string) => {
+  const getModulePermissions = useCallback((module: string) => {
     return permissions[module] || {
       can_read: false,
       can_write: false,
@@ -320,26 +325,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       can_approve: false,
       can_comment: false,
     };
-  };
+  }, [permissions]);
 
   /**
    * Check if user is in admin team (has team management permissions)
    * @returns True if user can manage teams
    */
-  const isAdmin = (): boolean => {
+  const isAdmin = useCallback((): boolean => {
     return hasPermission('teams', 'can_write');
-  };
+  }, [hasPermission]);
 
   /**
    * Check if user can manage operational modules
    * @returns True if user can write to onboarding, offboarding, or hris
    */
-  const canManageOperations = (): boolean => {
+  const canManageOperations = useCallback((): boolean => {
     return canWrite('onboarding') || canWrite('offboarding') || canWrite('hris');
-  };
+  }, [canWrite]);
 
   // Function to get navigation items based on user permissions and approval
-  const getAuthorizedNavItems = () => {
+  const getAuthorizedNavItems = useCallback(() => {
     if (!employeeInfo || !isApproved) {
       return [];
     }
@@ -357,9 +362,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If no permissions specified, show to all approved users
       return true;
     });
-  };
+  }, [employeeInfo, isApproved, hasPermission]);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     session,
     isLoading: isLoading || employeeDataLoading,
@@ -391,7 +397,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Permissions management
     refreshPermissions,
-  };
+  }), [
+    user,
+    session,
+    isLoading,
+    employeeDataLoading,
+    employeeInfo,
+    isApproved,
+    permissions,
+    permissionsLoading,
+    getAuthorizedNavItems,
+    hasPermission,
+    canRead,
+    canWrite,
+    canDelete,
+    canApprove,
+    canComment,
+    hasAnyPermission,
+    hasAllPermissions,
+    hasAnyOfPermissions,
+    getAccessibleModules,
+    getModulesWithAction,
+    getModulePermissions,
+    isAdmin,
+    canManageOperations,
+    refreshPermissions,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

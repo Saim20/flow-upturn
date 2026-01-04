@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { Package, Checks, XCircle, Clock, Tag, Calendar, User, FileText, ChatCircle, Check, X, Pencil } from "@phosphor-icons/react";
 import InlineSpinner from "@/components/ui/InlineSpinner";
 import { motion } from "framer-motion";
@@ -28,7 +28,7 @@ export interface RequisitionCardProps {
   onEdit?: (req: any) => void;
 }
 
-export const RequisitionCard: React.FC<RequisitionCardProps> = ({
+export const RequisitionCard: React.FC<RequisitionCardProps> = memo(({
   req,
   requisitionTypes,
   requisitionInventories,
@@ -268,4 +268,4 @@ export const RequisitionCard: React.FC<RequisitionCardProps> = ({
       )}
     </motion.div>
   );
-};
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Pencil, TrashSimple, Plus, Target, ArrowUpRight, Clock, CheckCircle, Tag, User } from "@phosphor-icons/react";
 import { Employee } from "@/lib/types/schemas";
@@ -62,6 +62,10 @@ export default function MilestoneDetailsView({
 
   const canWriteTasks = canWrite(PERMISSION_MODULES.TASKS);
   const canDeleteTasks = canDelete(PERMISSION_MODULES.TASKS);
+  
+  // Prevent re-fetching on tab switch
+  const hasInitialized = useRef(false);
+  const lastFetchedMilestoneId = useRef<number | null>(null);
 
   const handleCreateTask = async (values: any) => {
     try {
@@ -204,8 +208,15 @@ export default function MilestoneDetailsView({
   }
 
   useEffect(() => {
+    // Skip if already initialized with the same milestone ID
+    if (hasInitialized.current && lastFetchedMilestoneId.current === id) {
+      return;
+    }
+    
     if (id) {
       fetchTasksByMilestoneId(id);
+      hasInitialized.current = true;
+      lastFetchedMilestoneId.current = id;
     }
   }, [id]);
 

@@ -13,6 +13,7 @@ import { captureSupabaseError } from "@/lib/sentry";
 import { sendNotificationEmailAction } from "@/lib/actions/email-actions";
 import { checkUserEmailPreference } from "./useEmailPreferences";
 import { calculateProjectProgress } from "./useMilestones";
+import { projectCache } from "@/lib/utils/requestCache";
 
 export type { Project };
 
@@ -620,6 +621,13 @@ export function useProjects() {
     []
   );
 
+  /**
+   * Invalidate project cache - call after mutations
+   */
+  const invalidateProjectCache = useCallback(() => {
+    projectCache.invalidateAll();
+  }, []);
+
   return {
     ...baseResult,
 
@@ -651,5 +659,6 @@ export function useProjects() {
     createProject,
     updateProject,
     deleteProject: baseResult.deleteItem,
+    invalidateProjectCache,
   };
 }

@@ -4,7 +4,7 @@ import ComplaintHistoryPage from "@/components/ops/complaint/ComplaintHistory";
 import ComplaintRequestsPage from "@/components/ops/complaint/ComplaintRequests";
 import ServicePageTemplate from "@/components/ui/ServicePageTemplate";
 import { TabItem } from "@/components/ui/TabView";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { WarningCircle, ClockCounterClockwise, BookOpen, FilePlus, ClipboardText, Warning } from "@phosphor-icons/react";
 import { PERMISSION_MODULES } from "@/lib/constants";
@@ -13,7 +13,11 @@ import { PERMISSION_MODULES } from "@/lib/constants";
 export default function ComplaintPage() {
   const [activeTab, setActiveTab] = useState("home");
 
-  const tabs: TabItem[] = [
+  // Memoized action button handler
+  const handleNewComplaint = useCallback(() => setActiveTab("home"), []);
+
+  // Memoized tabs array
+  const tabs: TabItem[] = useMemo(() => [
     {
       key: "home",
       label: "New Complaint",
@@ -100,7 +104,7 @@ export default function ComplaintPage() {
         </div>
       )
     },
-  ];
+  ], [setActiveTab]);
 
 
   return (
@@ -114,7 +118,7 @@ export default function ComplaintPage() {
       setActiveTab={setActiveTab}
       actionButtonLabel="New Complaint"
       actionButtonIcon={<FilePlus className="h-4 w-4" />}
-      actionButtonOnClick={() => setActiveTab("home")}
+      actionButtonOnClick={handleNewComplaint}
       module={PERMISSION_MODULES.COMPLAINTS}
       showPermissionBanner={true}
       tutorialPrefix="complaint"

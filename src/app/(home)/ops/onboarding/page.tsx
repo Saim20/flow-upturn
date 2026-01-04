@@ -1,7 +1,7 @@
 // app/(dashboard)/onboarding/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, HTMLMotionProps } from "framer-motion";
 import { UserPlus, CircleNotch, Check, X, Warning, Users, User, ArrowsClockwise, DeviceMobile, ArrowRight } from "@phosphor-icons/react";
@@ -57,27 +57,36 @@ export default function OnboardingApprovalPage() {
   } = useOnboarding();
   const { pendingDevices, fetchPendingDevices } = useDevices();
 
+  // Track initial data fetch
+  const hasInitialized = useRef(false);
+
+  // Initial data fetch - only run once
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     fetchPendingEmployees();
     fetchEmployees();
     fetchDepartments();
     fetchPendingDevices();
 
     // Set up polling for updates (replaces realtime)
-    const unsubscribe = subscribeToOnboardingUpdates((payload) => {
-      console.log("Onboarding list polled and updated!");
+    const unsubscribe = subscribeToOnboardingUpdates(() => {
+      // Onboarding list polled and updated
     });
 
     return () => {
       unsubscribe();
     };
+  }, [fetchPendingEmployees, fetchEmployees, fetchDepartments, fetchPendingDevices, subscribeToOnboardingUpdates]);
+
+  // Memoized input change handler
+  const handleInputChange = useCallback((id: string, value: string) => {
+    setRejectionReasons((prev) => ({ ...prev, [id]: value }));
   }, []);
 
-  const handleInputChange = (id: string, value: string) => {
-    setRejectionReasons((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleAction = async (id: string, action: "ACCEPTED" | "REJECTED") => {
+  // Memoized action handler
+  const handleAction = useCallback(async (id: string, action: "ACCEPTED" | "REJECTED") => {
     const reason = rejectionReasons[id] || undefined;
 
     try {
@@ -96,18 +105,20 @@ export default function OnboardingApprovalPage() {
       toast.error(error.message || "Failed to process request");
       console.error(error);
     }
-  };
+  }, [rejectionReasons, processOnboardingAction, fetchPendingEmployees]);
 
-  const handleRefresh = async () => {
+  // Memoized refresh handler
+  const handleRefresh = useCallback(async () => {
     try {
       await fetchPendingEmployees();
       toast.success("List refreshed!");
     } catch (error) {
       toast.error("Failed to refresh list");
     }
-  };
+  }, [fetchPendingEmployees]);
 
-  const pageVariants = {
+  // Memoized animation variants
+  const pageVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -116,9 +127,9 @@ export default function OnboardingApprovalPage() {
         when: "beforeChildren"
       }
     }
-  };
+  }), []);
 
-  const contentVariants = {
+  const contentVariants = useMemo(() => ({
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -127,9 +138,9 @@ export default function OnboardingApprovalPage() {
         staggerChildren: 0.1
       }
     }
-  };
+  }), []);
 
-  const itemVariants = {
+  const itemVariants = useMemo(() => ({
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -140,7 +151,7 @@ export default function OnboardingApprovalPage() {
         damping: 20
       }
     }
-  };
+  }), []);
 
   if (loading) {
     return (

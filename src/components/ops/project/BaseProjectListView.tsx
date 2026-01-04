@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, ReactNode, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { debounce } from "lodash";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { extractEmployeeIdsFromProjects } from "@/lib/utils/project-utils";
 import { PERMISSION_MODULES } from "@/lib/constants";
 import { captureError } from "@/lib/sentry";
+import { WindowedList } from "@/components/ui/VirtualizedList";
 import ConfirmationModal from "@/components/ui/modals/ConfirmationModal";
 
 import ProjectDetails from "./ProjectDetails";
@@ -138,6 +139,12 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
 
   const hasFetched = useRef(false);
 
+  // Stable refs for search functions to avoid debounce recreation
+  const searchProjectsRef = useRef(variantData.searchProjects);
+  const projectsRef = useRef(variantData.projects);
+  searchProjectsRef.current = variantData.searchProjects;
+  projectsRef.current = variantData.projects;
+
   /** Initialize user ID and fetch data */
   useEffect(() => {
     if (!employeeInfo) return;
@@ -162,9 +169,9 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
     initData();
   }, [employeeInfo, variantData.fetchProjects, fetchEmployeesByIds, fetchDepartments]);
 
-  /** Debounced Search */
-  const debouncedSearch = useCallback(
-    debounce(async (term: string) => {
+  /** Stable debounced search using useMemo */
+  const debouncedSearch = useMemo(
+    () => debounce(async (term: string) => {
       if (!term.trim()) {
         setSearchResults([]);
         setSearching(false);
@@ -175,12 +182,12 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
       setShowEmpty(false);
 
       let results: Project[] = [];
-      if (variantData.searchProjects) {
+      if (searchProjectsRef.current) {
         // Use API search for ongoing/completed
-        results = await variantData.searchProjects(term, 20, false);
+        results = await searchProjectsRef.current(term, 20, false);
       } else {
         // Local filter for drafts
-        results = variantData.projects.filter(
+        results = projectsRef.current.filter(
           (p) =>
             p.project_title?.toLowerCase().includes(term.toLowerCase()) ||
             p.description?.toLowerCase().includes(term.toLowerCase())
@@ -194,14 +201,15 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
         setTimeout(() => setShowEmpty(true), 100);
       }
     }, 400),
-    [variantData.searchProjects, variantData.projects]
+    [] // Empty deps - uses refs for dynamic values
   );
 
   useEffect(() => {
     return () => debouncedSearch.cancel();
   }, [debouncedSearch]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Memoized search change handler
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value;
     setSearchTerm(term);
     setShowEmpty(false);
@@ -213,9 +221,13 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
     } else {
       debouncedSearch(term);
     }
-  };
+  }, [debouncedSearch]);
 
-  const displayProjects = searchTerm ? searchResults : variantData.projects;
+  // Memoized display projects
+  const displayProjects = useMemo(
+    () => searchTerm ? searchResults : variantData.projects,
+    [searchTerm, searchResults, variantData.projects]
+  );
 
   // Enrich projects with calculated progress
   useEffect(() => {
@@ -374,11 +386,14 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
                 color={config.loadingColor}
               />
             ) : enrichedProjects.length > 0 ? (
-              <div className="space-y-4">
-                {enrichedProjects.map((project, index) =>
+              <WindowedList
+                items={enrichedProjects}
+                keyExtractor={(project, index) => project.id || `project-${index}`}
+                maxRenderCount={30}
+                className="space-y-4"
+                renderItem={(project) =>
                   project.id ? (
                     <ProjectCard
-                      key={project.id || `project-${index}`}
                       project={project}
                       employees={employees}
                       departments={departments.filter((d) => d.id != null) as any}
@@ -408,16 +423,17 @@ export default function BaseProjectListView({ setActiveTab, config }: BaseProjec
                       statusIcon={config.statusIcon}
                     />
                   ) : null
-                )}
-
-                {!searchTerm && (
-                  <LoadMore
-                    isLoading={variantData.loading}
-                    hasMore={variantData.hasMore}
-                    onLoadMore={handleLoadMore}
-                  />
-                )}
-              </div>
+                }
+                footer={
+                  !searchTerm ? (
+                    <LoadMore
+                      isLoading={variantData.loading}
+                      hasMore={variantData.hasMore}
+                      onLoadMore={handleLoadMore}
+                    />
+                  ) : null
+                }
+              />
             ) : (
               showEmpty && (
                 <EmptyState

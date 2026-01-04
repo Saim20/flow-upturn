@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useStakeholders } from "@/hooks/useStakeholders";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -48,19 +48,39 @@ export default function OpsStakeholdersPage() {
 
   const pageSize = 25;
 
+  // Track initial load to prevent re-fetching
+  const hasInitialized = useRef(false);
+  const prevSearchParams = useRef<{ 
+    searchTerm: string; 
+    currentPage: number; 
+    filterStatus: "all" | "Lead" | "Permanent" | "Rejected" 
+  }>({ searchTerm: "", currentPage: 1, filterStatus: "all" });
+
   // Check if current user is a KAM for any stakeholder
-  const isKamForAny = stakeholders.some(
-    (s) => s.kam_id === employeeInfo?.id
+  const isKamForAny = useMemo(() => 
+    stakeholders.some((s) => s.kam_id === employeeInfo?.id),
+    [stakeholders, employeeInfo?.id]
   );
 
+  // Only fetch when search params actually change
   useEffect(() => {
+    const paramsChanged = 
+      prevSearchParams.current.searchTerm !== searchTerm ||
+      prevSearchParams.current.currentPage !== currentPage ||
+      prevSearchParams.current.filterStatus !== filterStatus;
+    
+    if (!paramsChanged && hasInitialized.current) return;
+    
+    hasInitialized.current = true;
+    prevSearchParams.current = { searchTerm, currentPage, filterStatus };
+
     const loadStakeholders = async () => {
       const result = await searchStakeholders({
         searchQuery: searchTerm,
         page: currentPage,
         pageSize,
         filterStatus,
-        includeAllCompany: true, // Show all stakeholders in the company
+        includeAllCompany: true,
       });
       setSearchResult(result);
     };
@@ -68,31 +88,39 @@ export default function OpsStakeholdersPage() {
     loadStakeholders();
   }, [searchTerm, currentPage, filterStatus, searchStakeholders]);
 
-  // Filter stakeholders by KAM if filter is set
-  const filteredStakeholders = filterKam === "mine" && employeeInfo?.id
-    ? stakeholders.filter(s => s.kam_id === employeeInfo.id)
-    : stakeholders;
+  // Memoize filtered stakeholders
+  const filteredStakeholders = useMemo(() => 
+    filterKam === "mine" && employeeInfo?.id
+      ? stakeholders.filter(s => s.kam_id === employeeInfo.id)
+      : stakeholders,
+    [filterKam, employeeInfo?.id, stakeholders]
+  );
 
-  // Stats
-  const myStakeholders = stakeholders.filter(s => s.kam_id === employeeInfo?.id);
-  const myLeads = myStakeholders.filter(s => s.status === "Lead");
-  const myPermanent = myStakeholders.filter(s => s.status === "Permanent");
+  // Memoize stats
+  const stats = useMemo(() => {
+    const myStakeholders = stakeholders.filter(s => s.kam_id === employeeInfo?.id);
+    return {
+      myStakeholders,
+      myLeads: myStakeholders.filter(s => s.status === "Lead"),
+      myPermanent: myStakeholders.filter(s => s.status === "Permanent"),
+    };
+  }, [stakeholders, employeeInfo?.id]);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearchTerm(query);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleFilterChange = (status: "all" | "Lead" | "Permanent" | "Rejected") => {
+  const handleFilterChange = useCallback((status: "all" | "Lead" | "Permanent" | "Rejected") => {
     setFilterStatus(status);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const getStepStatusColor = (status: string) => {
+  const getStepStatusColor = useCallback((status: string) => {
     switch (status) {
       case "Lead":
         return "bg-warning/10 text-warning dark:bg-warning/20";
@@ -103,18 +131,16 @@ export default function OpsStakeholdersPage() {
       default:
         return "bg-info/10 text-info dark:bg-info/20";
     }
-  };
+  }, []);
 
-  // Check if current user can edit a specific stakeholder (is KAM or has write permission)
-  const canEditStakeholder = (stakeholder: Stakeholder) => {
-    // User is the KAM for this stakeholder
+  // Memoize the permission check function
+  const canEditStakeholder = useCallback((stakeholder: Stakeholder) => {
     if (stakeholder.kam_id === employeeInfo?.id) return true;
-    // User has write permission for stakeholders module
     if (canWrite(PERMISSION_MODULES.STAKEHOLDERS)) return true;
     return false;
-  };
+  }, [employeeInfo?.id, canWrite]);
 
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     const dataToExport = filterKam === "mine" ? filteredStakeholders : stakeholders;
     if (dataToExport.length === 0) {
       toast.error("No data to export");
@@ -135,12 +161,12 @@ export default function OpsStakeholdersPage() {
       console.error("Error exporting CSV:", error);
       toast.error("Failed to export data");
     }
-  };
+  }, [filterKam, filteredStakeholders, stakeholders]);
 
-  // Navigate to detail page - use ops route for viewing
-  const handleViewStakeholder = (stakeholderId: number) => {
+  // Memoize navigation handler
+  const handleViewStakeholder = useCallback((stakeholderId: number) => {
     router.push(`/ops/stakeholders/${stakeholderId}`);
-  };
+  }, [router]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
@@ -162,7 +188,7 @@ export default function OpsStakeholdersPage() {
             disabled={loading || filteredStakeholders.length === 0}
             className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm bg-success text-white rounded-lg hover:bg-success/90 active:bg-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
+            <Download size={16} className="sm:w-4.5 sm:h-4.5" />
             <span>Export</span>
           </button>
         </PageHeader>
@@ -196,7 +222,7 @@ export default function OpsStakeholdersPage() {
         />
         <StatCard
           title="My Stakeholders"
-          value={myStakeholders.length}
+          value={stats.myStakeholders.length}
           icon={User}
           iconColor="text-primary-600"
           iconBgColor="bg-primary-100 dark:bg-primary-900/30"
@@ -266,7 +292,7 @@ export default function OpsStakeholdersPage() {
               }}
               options={[
                 { value: "all", label: "All Stakeholders" },
-                { value: "mine", label: `My Stakeholders (${myStakeholders.length})` },
+                { value: "mine", label: `My Stakeholders (${stats.myStakeholders.length})` },
               ]}
               containerClassName="w-full sm:w-56"
             />

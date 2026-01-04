@@ -2,7 +2,7 @@
 import { TaskUpdateModal } from "./shared/TaskModal";
 import { TaskFilters, useTasks } from "@/hooks/useTasks";
 import { Task } from "@/lib/types/schemas";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import TaskDetails from "./shared/TaskDetails";
 import { AnimatePresence } from "framer-motion";
 import { PencilSimple, TrashSimple, ArrowSquareOut, ClipboardText, Calendar } from "@phosphor-icons/react";
@@ -25,6 +25,7 @@ import { debounce } from "lodash"; // for debouncing search
 import { useAuth } from "@/lib/auth/auth-context";
 import { PERMISSION_MODULES } from "@/lib/constants";
 import { PermissionTooltip } from "@/components/permissions";
+import { WindowedList } from "@/components/ui/VirtualizedList";
 
 interface OngoingTaskPageProps {
   adminScoped: boolean;
@@ -68,7 +69,8 @@ export default function OngoingTaskPage({
     userIdInit();
   }, []);
 
-  const handleUpdateTask = async (values: any) => {
+  // Memoized task update handler
+  const handleUpdateTask = useCallback(async (values: any) => {
     try {
       const { data } = await updateTask(values);
       toast.success("Task updated successfully");
@@ -77,9 +79,10 @@ export default function OngoingTaskPage({
       toast.error("Error updating task");
       console.error(error);
     }
-  };
+  }, [updateTask]);
 
-  const handleDeleteTask = async (id: string) => {
+  // Memoized task delete handler
+  const handleDeleteTask = useCallback(async (id: string) => {
     try {
       setDeletingTaskId(id);
       await deleteTask(id, undefined, undefined, adminScoped);
@@ -90,31 +93,48 @@ export default function OngoingTaskPage({
     } finally {
       setDeletingTaskId(null);
     }
-  };
+  }, [adminScoped, deleteTask]);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (term: string) => {
+  // Stable ref for searchOngoingTasks to avoid debounce recreation
+  const searchOngoingTasksRef = useRef(searchOngoingTasks);
+  searchOngoingTasksRef.current = searchOngoingTasks;
+
+  // Stable debounced search function using useMemo
+  const debouncedSearch = useMemo(
+    () => debounce(async (term: string, scope: boolean) => {
       if (!term.trim()) {
         setSearchResults([]);
         setSearching(false);
         return;
       }
       setSearching(true);
-      const results = await searchOngoingTasks(term, 20, adminScoped);
+      const results = await searchOngoingTasksRef.current(term, 20, scope);
       setSearchResults(results);
       setSearching(false);
     }, 300),
-    [adminScoped]
+    [] // Empty deps - debounce function is stable, uses ref for searchOngoingTasks
   );
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  // Memoized search handler
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value;
     setSearchTerm(term);
-    debouncedSearch(term);
-  };
+    debouncedSearch(term, adminScoped);
+  }, [debouncedSearch, adminScoped]);
 
-  const displayTasks = searchTerm ? searchResults : ongoingTasks;
+  // Memoized display tasks to prevent unnecessary recalculations
+  const displayTasks = useMemo(
+    () => searchTerm ? searchResults : ongoingTasks,
+    [searchTerm, searchResults, ongoingTasks]
+  );
+  
   const [showEmpty, setShowEmpty] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -157,38 +177,43 @@ export default function OngoingTaskPage({
       {!editTask && (loading || searching) ? (
         <LoadingSpinner text={searching ? "Searching Tasks..." : "Loading Tasks..."} />
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {displayTasks.map((task) => (
-            <div key={task.id}>
-              <TaskCard
-                userId={userId}
-                adminScoped={adminScoped}
-                task={task}
-                onEdit={() => setEditTask(task)}
-                onDelete={() =>
-                  task.id !== undefined && handleDeleteTask(task.id)
-                }
-                isDeleting={deletingTaskId === task.id}
-              />
-            </div>
-          ))}
-
-          {displayTasks.length === 0 && !loading && !searching && hasLoaded && (
-            <EmptyState
-              icon={<ClipboardText className="w-12 h-12" />}
-              title="No tasks found"
-              description="Try a different keyword to search tasks."
+        <WindowedList
+          items={displayTasks}
+          keyExtractor={(task) => task.id || `task-${Math.random()}`}
+          maxRenderCount={30}
+          className="grid grid-cols-1 gap-4"
+          renderItem={(task) => (
+            <TaskCard
+              userId={userId}
+              adminScoped={adminScoped}
+              task={task}
+              onEdit={() => setEditTask(task)}
+              onDelete={() =>
+                task.id !== undefined && handleDeleteTask(task.id)
+              }
+              isDeleting={deletingTaskId === task.id}
             />
           )}
+          footer={
+            <>
+              {displayTasks.length === 0 && !loading && !searching && hasLoaded && (
+                <EmptyState
+                  icon={<ClipboardText className="w-12 h-12" />}
+                  title="No tasks found"
+                  description="Try a different keyword to search tasks."
+                />
+              )}
 
-          {!searchTerm && (!loading && !searching) && displayTasks.length > 0 && (
-            <LoadMore
-              isLoading={loadMoreLoading}
-              onLoadMore={onLoadMore}
-              hasMore={hasMoreOngoingTasks}
-            />
-          )}
-        </div>
+              {!searchTerm && (!loading && !searching) && displayTasks.length > 0 && (
+                <LoadMore
+                  isLoading={loadMoreLoading}
+                  onLoadMore={onLoadMore}
+                  hasMore={hasMoreOngoingTasks}
+                />
+              )}
+            </>
+          }
+        />
       )}
 
       <AnimatePresence>
@@ -216,8 +241,8 @@ export default function OngoingTaskPage({
   );
 }
 
-// TaskCard remains the same
-function TaskCard({
+// TaskCard - memoized to prevent unnecessary re-renders
+const TaskCard = memo(function TaskCard({
   adminScoped,
   userId,
   task,
@@ -332,4 +357,4 @@ function TaskCard({
       </CardContent>
     </Card>
   );
-}
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardContent, StatusBadge, InfoRow } from "@/components/ui/Card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ interface SettlementCardProps {
   showDetails?: boolean;
 }
 
-export default function SettlementCard({
+export default React.memo(function SettlementCard({
   settlement,
   settlementTypes,
   employees,
@@ -151,4 +152,4 @@ export default function SettlementCard({
       </CardContent>
     </Card>
   );
-}
+});

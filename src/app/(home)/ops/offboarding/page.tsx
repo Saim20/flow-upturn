@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserMinus, User, MagnifyingGlass, ArrowsClockwise, Users, Check, X, Calendar, Briefcase, Building, Phone, Envelope, Warning, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { toast, Toaster } from "react-hot-toast";
@@ -81,13 +81,21 @@ export default function OffboardingPage() {
 
   const { departments, fetchDepartments } = useDepartments();
 
+  // Track initial data fetch
+  const hasInitialized = useRef(false);
+
+  // Initial data fetch - only run once
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     fetchActiveEmployees();
     fetchOffboardedEmployees();
     fetchDepartments();
-  }, []);
+  }, [fetchActiveEmployees, fetchOffboardedEmployees, fetchDepartments]);
 
-  const handleRefresh = async () => {
+  // Memoized refresh handler
+  const handleRefresh = useCallback(async () => {
     try {
       await fetchActiveEmployees();
       await fetchOffboardedEmployees();
@@ -95,9 +103,10 @@ export default function OffboardingPage() {
     } catch (error) {
       toast.error("Failed to refresh list");
     }
-  };
+  }, [fetchActiveEmployees, fetchOffboardedEmployees]);
 
-  const handleOffboarding = async () => {
+  // Memoized offboarding handler
+  const handleOffboarding = useCallback(async () => {
     if (!selectedEmployee) return;
 
     if (!formData.reason.trim()) {
@@ -129,9 +138,10 @@ export default function OffboardingPage() {
       toast.error(error.message || "Failed to process offboarding");
       console.error(error);
     }
-  };
+  }, [selectedEmployee, formData, processOffboarding]);
 
-  const handleReactivate = async (employeeId: string) => {
+  // Memoized reactivate handler
+  const handleReactivate = useCallback(async (employeeId: string) => {
     try {
       const result = await reactivateEmployee(employeeId);
       if (result.success) {
@@ -141,10 +151,10 @@ export default function OffboardingPage() {
       toast.error(error.message || "Failed to reactivate employee");
       console.error(error);
     }
-  };
+  }, [reactivateEmployee]);
 
-  // FunnelSimple employees based on search query
-  const filteredActiveEmployees = activeEmployees.filter((emp) => {
+  // Memoized filtered employees
+  const filteredActiveEmployees = useMemo(() => activeEmployees.filter((emp) => {
     const searchLower = searchQuery.toLowerCase();
     return (
       emp.first_name.toLowerCase().includes(searchLower) ||
@@ -153,9 +163,9 @@ export default function OffboardingPage() {
       emp.designation?.toLowerCase().includes(searchLower) ||
       emp.department_name?.toLowerCase().includes(searchLower)
     );
-  });
+  }), [activeEmployees, searchQuery]);
 
-  const filteredOffboardedEmployees = offboardedEmployees.filter((emp) => {
+  const filteredOffboardedEmployees = useMemo(() => offboardedEmployees.filter((emp) => {
     const searchLower = searchQuery.toLowerCase();
     return (
       emp.first_name.toLowerCase().includes(searchLower) ||
@@ -164,14 +174,17 @@ export default function OffboardingPage() {
       emp.designation?.toLowerCase().includes(searchLower) ||
       emp.department_name?.toLowerCase().includes(searchLower)
     );
-  });
+  }), [offboardedEmployees, searchQuery]);
 
-  const displayedEmployees =
+  const displayedEmployees = useMemo(() =>
     activeTab === "active"
       ? filteredActiveEmployees
-      : filteredOffboardedEmployees;
+      : filteredOffboardedEmployees,
+    [activeTab, filteredActiveEmployees, filteredOffboardedEmployees]
+  );
 
-  const pageVariants = {
+  // Memoized animation variants
+  const pageVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -180,9 +193,9 @@ export default function OffboardingPage() {
         when: "beforeChildren",
       },
     },
-  };
+  }), []);
 
-  const itemVariants = {
+  const itemVariants = useMemo(() => ({
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -193,7 +206,7 @@ export default function OffboardingPage() {
         damping: 20,
       },
     },
-  };
+  }), []);
 
   if (loading && activeEmployees.length === 0 && offboardedEmployees.length === 0) {
     return (

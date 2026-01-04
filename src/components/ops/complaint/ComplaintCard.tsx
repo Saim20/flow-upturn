@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, memo } from "react";
 import { Flag, Checks, XCircle, Clock, User, ChatCircle, FileText, X, Check } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -21,7 +21,7 @@ interface ComplaintCardProps {
   canComment?: boolean;
 }
 
-export const ComplaintCard: React.FC<ComplaintCardProps> = ({
+export const ComplaintCard: React.FC<ComplaintCardProps> = memo(({
   complaint,
   employees,
   complaintTypes,
@@ -34,10 +34,6 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
   canComment = true
 }) => {
   const [comment, setComment] = useState("");
-
-  useEffect(() => {
-    console.log(mode, canApprove, canComment)
-  })
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -205,4 +201,4 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
       )}
     </motion.div>
   );
-};
+});

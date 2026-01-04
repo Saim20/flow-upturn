@@ -1,3 +1,4 @@
+import React from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardFooter, StatusBadge, InfoRow } from "@/components/ui/Card";
@@ -27,7 +28,7 @@ interface ProjectCardProps {
   isDraft?: boolean;
 }
 
-export default function ProjectCard({
+export default React.memo(function ProjectCard({
   project,
   onEdit,
   onDelete,
@@ -167,4 +168,4 @@ export default function ProjectCard({
       </CardContent>
     </Card>
   );
-} 
+}); 

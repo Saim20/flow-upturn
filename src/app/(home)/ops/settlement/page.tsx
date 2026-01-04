@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Receipt, ClipboardText, ClockCounterClockwise, BookOpen, CurrencyDollar, Warning, FilePlus } from "@phosphor-icons/react";
 import ServicePageTemplate from "@/components/ui/ServicePageTemplate";
@@ -22,7 +22,14 @@ function SettlementPageContent() {
   useEffect(() => {
     setActiveTab(tab || "create");
   }, [tab]);
-  const tabs: TabItem[] = [
+
+  // Memoized action button handler
+  const handleCreateClick = useCallback(() => {
+    router.push("/ops/settlement?tab=create");
+  }, [router]);
+
+  // Memoized tabs array to prevent unnecessary re-renders
+  const tabs: TabItem[] = useMemo(() => [
     {
       key: "create",
       label: "Create New",
@@ -80,7 +87,7 @@ function SettlementPageContent() {
       ),
       link: "/ops/settlement?tab=policy",
     },
-  ];
+  ], [setActiveTab]);
 
   return (
     <ServicePageTemplate
@@ -91,9 +98,7 @@ function SettlementPageContent() {
       tabs={tabs}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
-      actionButtonOnClick={() => {
-        router.push("/ops/settlement?tab=create");
-      }}
+      actionButtonOnClick={handleCreateClick}
       isLinked={true}
       module={PERMISSION_MODULES.SETTLEMENT}
       showPermissionBanner={true}

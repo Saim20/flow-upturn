@@ -4,7 +4,7 @@ import RequisitionRequestsPage from "@/components/ops/requisition/RequisitionReq
 import UpcomingPage from "@/components/ops/requisition/UpcomingPage";
 import ServicePageTemplate from "@/components/ui/ServicePageTemplate";
 import { TabItem } from "@/components/ui/TabView";
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FilePlus, ClipboardText, ClockCounterClockwise, BookOpen, Warning, Scroll } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,7 +21,13 @@ function RequisitionPageContent() {
     setActiveTab(tab || "create");
   }, [tab]);
 
-  const tabs: TabItem[] = [
+  // Memoized action button handler
+  const handleCreateClick = useCallback(() => {
+    router.push("/ops/requisition?tab=create");
+  }, [router]);
+
+  // Memoized tabs array to prevent unnecessary re-renders
+  const tabs: TabItem[] = useMemo(() => [
     {
       key: "create",
       label: "Create New",
@@ -79,7 +85,7 @@ function RequisitionPageContent() {
       ),
       link: "/ops/requisition?tab=policy",
     },
-  ];
+  ], [setActiveTab]);
 
   return (
     <ServicePageTemplate
@@ -92,9 +98,7 @@ function RequisitionPageContent() {
       setActiveTab={setActiveTab}
       actionButtonLabel="Create Requisition"
       actionButtonIcon={<FilePlus className="h-4 w-4" />}
-      actionButtonOnClick={() => {
-        router.push("/ops/requisition?tab=create");
-      }}
+      actionButtonOnClick={handleCreateClick}
       isLinked={true}
       module={PERMISSION_MODULES.REQUISITION}
       showPermissionBanner={true}

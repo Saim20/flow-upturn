@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import { useNotifications } from "./useNotifications";
 import { slugify } from "@/lib/utils";
 import { captureSupabaseError } from "@/lib/sentry";
+import { taskCache } from "@/lib/utils/requestCache";
 
 // Task status variants
 export enum TaskStatus {
@@ -874,6 +875,9 @@ export function useTasks() {
     }
   }, [getProjectTasks, fetchTaskStats]);
 
+  // Cache management - must be at top level, not inside useMemo
+  const invalidateTaskCache = useCallback(() => taskCache.invalidateAll(), []);
+
   return useMemo(() => ({
     // State
     tasks,
@@ -915,6 +919,9 @@ export function useTasks() {
     completeTask,
     reopenTask,
     updateMilestone,
+
+    // Cache management
+    invalidateTaskCache,
   }), [
     tasks,
     ongoingTasks,
@@ -950,5 +957,6 @@ export function useTasks() {
     completeTask,
     reopenTask,
     updateMilestone,
+    invalidateTaskCache,
   ]);
 }

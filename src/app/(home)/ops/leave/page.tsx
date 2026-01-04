@@ -4,7 +4,7 @@ import LeaveHistoryPage from "@/components/ops/leave/LeaveHistory";
 import LeaveRequestsPage from "@/components/ops/leave/LeaveRequests";
 import ServicePageTemplate from "@/components/ui/ServicePageTemplate";
 import { TabItem } from "@/components/ui/TabView";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Clock, FileText, PlusCircle, WarningCircle, Calendar } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,7 +17,14 @@ function LeavePageContent() {
   const tab = searchParams.get("tab");
 
   const [activeTab, setActiveTab] = useState(tab || "apply");
-  const tabs: TabItem[] = [
+
+  // Memoized action button handler
+  const handleApplyClick = useCallback(() => {
+    router.push("/ops/leave?tab=apply");
+  }, [router]);
+
+  // Memoized tabs array to prevent unnecessary re-renders
+  const tabs: TabItem[] = useMemo(() => [
     {
       key: "apply",
       label: "Apply Leave",
@@ -75,7 +82,7 @@ function LeavePageContent() {
       ),
       link: "/ops/leave?tab=policy",
     },
-  ];
+  ], [setActiveTab]);
 
   useEffect(() => {
     setActiveTab(tab || "apply");
@@ -92,7 +99,7 @@ function LeavePageContent() {
       setActiveTab={setActiveTab}
       actionButtonLabel="Apply for Leave"
       actionButtonIcon={<PlusCircle className="h-4 w-4" />}
-      actionButtonOnClick={() => router.push("/ops/leave?tab=apply")}
+      actionButtonOnClick={handleApplyClick}
       isLinked={true}
       module={PERMISSION_MODULES.LEAVE}
       showPermissionBanner={true}

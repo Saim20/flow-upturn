@@ -11,7 +11,7 @@ import ServicePageTemplate from "@/components/ui/ServicePageTemplate";
 import { TabItem } from "@/components/ui/TabView";
 import { Calendar, UserCheck, UserMinus, Clock, ClipboardText } from "@phosphor-icons/react";
 import { useSearchParams } from "next/navigation";
-import { useState, Suspense, useEffect, useMemo } from "react";
+import { useState, Suspense, useEffect, useMemo, useCallback, useRef } from "react";
 import { PERMISSION_MODULES } from "@/lib/constants";
 import { useSites } from "@/hooks/useAttendanceManagement";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -39,6 +39,9 @@ function AttendancePageContent() {
   const { user } = useAuth();
   const { today, todayLoading, getTodaysAttendance } = useAttendanceStatus();
 
+  // Track initial data fetch
+  const hasInitialized = useRef(false);
+
   // Modal states
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -49,23 +52,27 @@ function AttendancePageContent() {
   const [attendanceStatus, setAttendanceStatus] = useState<'Present' | 'Late' | 'Wrong_Location'>('Present');
   const [currentRecordId, setCurrentRecordId] = useState<number | undefined>();
 
-  // Derived attendance status
+  // Derived attendance status - memoized
   const attendanceCheckStatus = useMemo(() => ({
     checkIn: !!today?.check_in_time,
     checkOut: !!today?.check_out_time,
-  }), [today]);
+  }), [today?.check_in_time, today?.check_out_time]);
 
+  // Fetch sites and attendance only once
   useEffect(() => {
+    if (hasInitialized.current || !user) return;
+    hasInitialized.current = true;
+    
     fetchSites();
     getTodaysAttendance();
-  }, [user]);
+  }, [user, fetchSites, getTodaysAttendance]);
 
   useEffect(() => {
     setActiveTab(tab || "today");
   }, [tab]);
 
-  // Send request to supervisor
-  const handleSendRequest = async (recordId: number, reason: string) => {
+  // Memoized handler for sending attendance requests to supervisor
+  const handleSendRequest = useCallback(async (recordId: number, reason: string) => {
     try {
       const user = await getEmployeeInfo();
       if (!user) return;
@@ -119,9 +126,10 @@ function AttendancePageContent() {
       setModalMessage('An error occurred while sending the request.');
       setShowErrorModal(true);
     }
-  };
+  }, [attendanceStatus]);
 
-  const onCheckIn = async () => {
+  // Memoized check-in handler
+  const onCheckIn = useCallback(async () => {
     setAttendanceLoading(true);
     try {
       const result = await handleCheckIn(attendanceRecord, sites, getTodaysAttendance);
@@ -137,9 +145,10 @@ function AttendancePageContent() {
     } finally {
       setAttendanceLoading(false);
     }
-  };
+  }, [attendanceRecord, sites, getTodaysAttendance]);
 
-  const onCheckOut = async () => {
+  // Memoized check-out handler
+  const onCheckOut = useCallback(async () => {
     setAttendanceLoading(true);
     try {
       if (today?.id) {
@@ -165,14 +174,20 @@ function AttendancePageContent() {
     } finally {
       setAttendanceLoading(false);
     }
-  };
+  }, [today?.id]);
 
-  const handleRecordChange = (record: any) => {
+  // Memoized record change handler
+  const handleRecordChange = useCallback((record: any) => {
     setAttendanceRecord(record);
-  };
+  }, []);
 
-  // 🟦 Define all tabs including the new "Today" one
-  const tabs: TabItem[] = [
+  // Memoized modal close handlers
+  const handleCloseStatusModal = useCallback(() => setShowStatusModal(false), []);
+  const handleCloseSuccessModal = useCallback(() => setShowSuccessModal(false), []);
+  const handleCloseErrorModal = useCallback(() => setShowErrorModal(false), []);
+
+  // 🟦 Memoized tabs array to prevent unnecessary re-renders
+  const tabs: TabItem[] = useMemo(() => [
     {
       key: "today",
       label: "Today",
@@ -216,7 +231,7 @@ function AttendancePageContent() {
       content: <AttendanceRequestsPage />,
       link: "/ops/attendance?tab=request",
     },
-  ];
+  ], [todayLoading, sitesLoading, attendanceLoading, attendanceCheckStatus, attendanceRecord, sites, handleRecordChange, onCheckIn, onCheckOut]);
 
   return (
     <>
@@ -237,7 +252,7 @@ function AttendancePageContent() {
       {/* Attendance Status Modal */}
       <AttendanceStatusModal
         isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
+        onClose={handleCloseStatusModal}
         status={attendanceStatus}
         recordId={currentRecordId}
         onSendRequest={handleSendRequest}
@@ -246,7 +261,7 @@ function AttendancePageContent() {
       {/* Success Modal */}
       <SuccessModal
         isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
+        onClose={handleCloseSuccessModal}
         title={modalTitle}
         message={modalMessage}
         autoCloseDuration={0}
@@ -255,7 +270,7 @@ function AttendancePageContent() {
       {/* Error Modal */}
       <ErrorModal
         isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
+        onClose={handleCloseErrorModal}
         title={modalTitle}
         message={modalMessage}
       />

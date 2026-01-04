@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import MilestoneDetailsView from "@/components/ops/project/milestone/MilestoneDetailsView";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -29,9 +29,22 @@ export default function MilestoneDetailsPage({
   const [milestoneLoading, setMilestoneLoading] = useState(true);
   const [project, setProject] = useState<any>(null);
   const [projectLoading, setProjectLoading] = useState(true);
+  
+  // Prevent re-fetching on tab switch
+  const hasInitialized = useRef(false);
+  const lastFetchedIds = useRef<{ projectId: string; milestoneId: string } | null>(null);
 
   // Fetch project and milestone details
   useEffect(() => {
+    // Skip if already fetched with same IDs
+    if (
+      hasInitialized.current && 
+      lastFetchedIds.current?.projectId === projectId && 
+      lastFetchedIds.current?.milestoneId === milestoneId
+    ) {
+      return;
+    }
+
     async function fetchData() {
       setMilestoneLoading(true);
       setProjectLoading(true);
@@ -57,6 +70,10 @@ export default function MilestoneDetailsPage({
         if (projectResult) {
           setProject(projectResult);
         }
+        
+        // Mark as initialized and store fetched IDs
+        hasInitialized.current = true;
+        lastFetchedIds.current = { projectId, milestoneId };
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -68,9 +85,9 @@ export default function MilestoneDetailsPage({
     fetchData();
   }, [milestoneId, projectId, fetchSingleProject]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     router.push(`/ops/project/${projectId}`);
-  };
+  }, [router, projectId]);
 
   if (employeesLoading || milestoneLoading || projectLoading) {
     return (

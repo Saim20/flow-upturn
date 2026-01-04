@@ -1,6 +1,6 @@
 "use client";
 import { Notice, useNotices } from "@/hooks/useNotice";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Pencil, TrashSimple, Plus, Clock, CalendarBlank, Info } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -28,9 +28,13 @@ export default function NoticePage() {
   const [isUpdatingNotice, setIsUpdatingNotice] = useState(false);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
   const [isCreatingNoticeButtonLoading, setIsCreatingNoticeButtonLoading] = useState(false);
-  const [userId, setUserId] = useState<string>("")
+  const [userId, setUserId] = useState<string>("");
 
-  const handleCreateNotice = async (values: any) => {
+  // Track initial data fetch
+  const hasInitialized = useRef(false);
+
+  // Memoized handlers
+  const handleCreateNotice = useCallback(async (values: any) => {
     try {
       setIsCreatingNoticeButtonLoading(true);
       await createNotice(values);
@@ -42,9 +46,9 @@ export default function NoticePage() {
       toast.error("Error creating notice. Please try again.");
       console.error(error);
     }
-  };
+  }, [createNotice, fetchNotices]);
 
-  const handleUpdateNotice = async (values: any) => {
+  const handleUpdateNotice = useCallback(async (values: any) => {
     try {
       setIsUpdatingNotice(true);
       if (editNotice?.id) {
@@ -58,9 +62,9 @@ export default function NoticePage() {
       toast.error("Error updating notice. Please try again.");
       console.error(error);
     }
-  };
+  }, [editNotice?.id, updateNotice, fetchNotices]);
 
-  const handleDeleteNotice = async (id: number) => {
+  const handleDeleteNotice = useCallback(async (id: number) => {
     const confirmed = window.confirm("Are you sure you want to delete this notice?");
     if (!confirmed) return;
 
@@ -72,22 +76,28 @@ export default function NoticePage() {
       toast.error("Error deleting notice. Please try again.");
       console.error(error);
     }
-  };
+  }, [deleteNotice, fetchNotices]);
 
+  const handleOpenCreateModal = useCallback(() => setIsCreatingNotice(true), []);
+  const handleCloseCreateModal = useCallback(() => setIsCreatingNotice(false), []);
+  const handleCloseEditModal = useCallback(() => setEditNotice(null), []);
+
+  // Initial data fetch - only run once
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    
     fetchNotices();
-  }, []);
-
-  useEffect(() => {
+    
     const getUserId = async () => {
-      const id = await getEmployeeId()
-      setUserId(id)
-    }
+      const id = await getEmployeeId();
+      setUserId(id);
+    };
+    getUserId();
+  }, [fetchNotices]);
 
-    getUserId()
-  }, [])
-
-  const pageVariants = {
+  // Memoized animation variants
+  const pageVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -102,9 +112,9 @@ export default function NoticePage() {
         duration: 0.3
       }
     }
-  };
+  }), []);
 
-  const containerVariants = {
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -112,9 +122,9 @@ export default function NoticePage() {
         staggerChildren: 0.1
       }
     }
-  };
+  }), []);
 
-  const itemVariants = {
+  const itemVariants = useMemo(() => ({
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -131,7 +141,7 @@ export default function NoticePage() {
         duration: 0.2
       }
     }
-  };
+  }), []);
 
   if (loading) {
     return (
@@ -177,7 +187,7 @@ export default function NoticePage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   type="button"
-                  onClick={() => setIsCreatingNotice(true)}
+                  onClick={handleOpenCreateModal}
                   className="flex items-center justify-center gap-2 bg-warning hover:brightness-110 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
                 >
                   <Plus className="h-4 w-4" />

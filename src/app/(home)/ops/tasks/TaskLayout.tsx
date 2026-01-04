@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { ClipboardText, CheckSquare, Archive, Plus, PlusSquare } from "@phosphor-icons/react";
 import TabView, { TabItem } from "@/components/ui/TabView";
@@ -48,13 +48,16 @@ export default function TaskLayout({
   setActiveTab?: (tab: string) => void;
 }) {
   const router = useRouter()
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback((tab: string) => {
     router.push(`/ops/tasks?tab=${tab}`);
-  };
+  }, [router]);
 
   const [tabs, setTabs] = useState<TabItem[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { employeeInfo } = useAuth();
+
+  // Ref to track initial data fetch - prevents re-fetching on tab switch
+  const hasInitialized = useRef(false);
 
   const {
     hasMoreOngoingTasks,
@@ -71,22 +74,26 @@ export default function TaskLayout({
     fetchCompletedTasks,
   } = useTasks();
 
-  // Load tasks
+  // Load tasks only once on initial mount
   useEffect(() => {
-    if (employeeInfo) {
-      fetchOngoingTasks();
-      console.log("OT")
-      fetchCompletedTasks();
-    }
-  }, [employeeInfo]);
+    if (hasInitialized.current || !employeeInfo) return;
+    hasInitialized.current = true;
+    
+    fetchOngoingTasks();
+    fetchCompletedTasks();
+  }, [employeeInfo, fetchOngoingTasks, fetchCompletedTasks]);
 
   // Tab content
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
-  const loadMoreOngoing = async () => {
+  const loadMoreOngoing = useCallback(async () => {
     setLoadMoreLoading(true)
     await fetchOngoingTasks(true, 10)
     setLoadMoreLoading(false)
-  }
+  }, [fetchOngoingTasks]);
+
+  const loadMoreCompleted = useCallback(() => {
+    fetchCompletedTasks(true, 10);
+  }, [fetchCompletedTasks]);
   const ongoingTaskPage = useMemo(
     () => (
       <OngoingTaskPage
@@ -101,7 +108,7 @@ export default function TaskLayout({
 
       />
     ),
-    [ongoingTasks, ongoingTasksLoading, loadMoreLoading, hasMoreOngoingTasks, updateTask, deleteTask]
+    [ongoingTasks, ongoingTasksLoading, loadMoreLoading, hasMoreOngoingTasks, updateTask, deleteTask, loadMoreOngoing]
   );
 
   const completedTasksList = useMemo(
@@ -112,12 +119,10 @@ export default function TaskLayout({
         deleteTask={deleteTask}
         adminScoped={false}
         hasMoreCompletedTasks={hasMoreCompletedTasks}
-        onLoadMore={() => {
-          fetchCompletedTasks(true, 10)
-        }}
+        onLoadMore={loadMoreCompleted}
       />
     ),
-    [completedTasks, loading, deleteTask]
+    [completedTasks, loading, deleteTask, hasMoreCompletedTasks, loadMoreCompleted]
   );
 
   const archivedContent = useMemo(
@@ -155,7 +160,7 @@ export default function TaskLayout({
     setTabs(TABS.map(tab => ({ ...tab, content: getTabContent(tab.key) })));
   }, [getTabContent]);
 
-  const handleCreateTask = async (taskData: TaskData) => {
+  const handleCreateTask = useCallback(async (taskData: TaskData) => {
     const task: Task = {
       task_title: taskData.task_title,
       task_description: taskData.task_description || "",
@@ -177,7 +182,11 @@ export default function TaskLayout({
       toast.error("Failed to create task");
       console.error("Error creating task:", error);
     }
-  };
+  }, [createTask]);
+
+  const handleOpenCreateModal = useCallback(() => setShowCreateModal(true), []);
+  const handleCloseCreateModal = useCallback(() => setShowCreateModal(false), []);
+  const handleCloseTaskDetails = useCallback(() => window.history.back(), []);
 
   return (
     <motion.div
@@ -198,7 +207,7 @@ export default function TaskLayout({
         </div>
         <button
           data-tutorial="task-create-btn"
-          onClick={() => setShowCreateModal(true)}
+          onClick={handleOpenCreateModal}
           className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
         >
           <PlusSquare className="h-5 w-5" />
@@ -213,29 +222,20 @@ export default function TaskLayout({
         tutorialPrefix="task"
       />
 
-      {/* Only show tab content when no task is selected
-      {!selectedTaskId && tabs.length > 0 && activeTab && (
-        <div className="mt-4">
-          {tabs.find((t) => t.key === activeTab)?.content}
-        </div>
-      )} */}
-
-
       {/* Task Details */}
       {selectedTaskId && (
         <TaskDetails
           id={selectedTaskId}
-          onClose={() => window.history.back()}
+          onClose={handleCloseTaskDetails}
           onTaskStatusUpdate={() => { }}
         />
       )}
-
 
       {showCreateModal && (
         <TaskCreateModal
           onSubmit={handleCreateTask}
           departmentId={employeeInfo?.department_id as number}
-          onClose={() => setShowCreateModal(false)}
+          onClose={handleCloseCreateModal}
         />
       )}
     </motion.div>
