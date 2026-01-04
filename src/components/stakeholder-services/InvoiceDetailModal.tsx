@@ -169,7 +169,7 @@ export default function InvoiceDetailModal({
   if (loading && !invoice) {
     return (
       <BaseModal isOpen={isOpen} onClose={onClose} title="Invoice Details" size="lg">
-        <LoadingSpinner icon={Receipt} text="Loading invoice..." color="blue" height="min-h-[400px]" />
+        <LoadingSpinner icon={Receipt} text="Loading invoice..." color="blue" height="min-h-100" />
       </BaseModal>
     );
   }

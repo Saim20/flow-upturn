@@ -98,25 +98,25 @@ export default function ProjectsWidget({ config, isEditMode, onToggle, onSizeCha
             <div className="space-y-3 flex-1 overflow-y-auto min-h-0">
               {ongoingProjects.length > 0 ? (
                 ongoingProjects.slice(0, 5).map((project) => (
-                  <motion.div
+                    <motion.div
                     key={project.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: 0.05 }}
                     onClick={handleProjectClick}
-                    className="flex items-center justify-between px-4 py-3 bg-background-secondary hover:bg-primary-50 rounded-lg transition-colors text-sm font-medium border border-border-primary cursor-pointer"
-                  >
+                    className="flex items-center justify-between px-4 py-3 bg-surface-secondary hover:bg-surface-hover rounded-lg transition-colors text-sm font-medium border border-border-primary cursor-pointer"
+                    >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className="w-2 h-2 rounded-full bg-primary-500 shrink-0"></div>
-                      <span className="truncate">{project.project_title}</span>
+                      <span className="truncate text-foreground-primary">{project.project_title}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <Clock size={14} className="text-foreground-tertiary" />
                       <span className="whitespace-nowrap text-foreground-secondary text-xs">
-                        {formatDateToDayMonth(project.end_date)}
+                      {formatDateToDayMonth(project.end_date)}
                       </span>
                     </div>
-                  </motion.div>
+                    </motion.div>
                 ))
               ) : (
                 <EmptyState 

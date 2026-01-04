@@ -161,8 +161,6 @@ export async function POST(request: NextRequest) {
           designation,
           department_id,
           job_status,
-          role: employeeRole,
-          is_supervisor: false,
           hire_date,
           company_id,
           rejection_reason: null,

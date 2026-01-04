@@ -11,7 +11,6 @@ export type UserProfileData = {
   first_name: string;
   last_name: string;
   email: string;
-  role: string;
   phone_number?: string;
   department_id?: number;
   designation?: string;
@@ -79,7 +78,6 @@ export function useUserData() {
         setUserData({
           ...data,
           id: employeeInfo.id,
-          role: data.role,
           department_name: departmentName
         });
       } catch (error) {
@@ -144,7 +142,6 @@ export function useUserData() {
       setUserData({
         ...data,
         id: employeeInfo.id,
-        role: data.role,
         department_name: departmentName
       });
     } catch (error) {

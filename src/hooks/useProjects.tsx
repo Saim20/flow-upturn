@@ -551,6 +551,36 @@ export function useProjects() {
     }
   };
 
+  // --- FETCH SINGLE PROJECT ---
+  const fetchSingleProject = useCallback(
+    async (projectId: string): Promise<ProjectDetails | null> => {
+      try {
+        if (!employeeInfo) {
+          return null;
+        }
+
+        const { data, error } = await supabase
+          .from("project_records")
+          .select("*")
+          .eq("id", projectId)
+          .eq("company_id", employeeInfo.company_id)
+          .single();
+
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        captureSupabaseError(
+          { message: error instanceof Error ? error.message : String(error) },
+          "fetchSingleProject",
+          { projectId, companyId: employeeInfo?.company_id }
+        );
+        console.error("Error fetching single project:", error);
+        return null;
+      }
+    },
+    [employeeInfo]
+  );
+
   // --- ENRICH PROJECTS WITH CALCULATED PROGRESS ---
   const enrichProjectsWithProgress = useCallback(
     async (projects: ProjectDetails[]): Promise<(ProjectDetails & { progress: number })[]> => {
@@ -607,6 +637,7 @@ export function useProjects() {
     fetchOngoingProjects,
     fetchCompletedProjects,
     fetchDraftProjects,
+    fetchSingleProject,
 
     hasMoreOngoingProjects,
     hasMoreCompletedProjects,

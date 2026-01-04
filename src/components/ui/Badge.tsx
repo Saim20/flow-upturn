@@ -124,7 +124,7 @@ export function PriorityBadge({ priority, size = "sm", className = "" }: Priorit
   );
 }
 
-// Role Badge
+// Role Badge - Kept for display purposes (shows team names, not legacy roles)
 export interface RoleBadgeProps {
   role: string;
   size?: "xs" | "sm" | "md";
@@ -135,6 +135,7 @@ export function RoleBadge({ role, size = "sm", className = "" }: RoleBadgeProps)
   const getRoleVariant = (roleText: string): "success" | "warning" | "info" | "default" | "primary" | "error" => {
     const lower = roleText.toLowerCase();
     
+    // For team names or legacy role display only
     if (lower.includes("admin") || lower.includes("superadmin")) {
       return "error";
     }

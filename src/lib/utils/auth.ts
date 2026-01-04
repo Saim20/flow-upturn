@@ -59,7 +59,6 @@ export async function getCompanyId(): Promise<number> {
 export async function getEmployeeInfo(): Promise<{
   id: string;
   name: string;
-  role: string;
   has_approval: string;
   company_id: number;
   department_id?: number;
@@ -92,7 +91,6 @@ export async function getEmployeeInfo(): Promise<{
   return {
     id: data.id,
     name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-    role: data.role || '',
     has_approval: data.has_approval || '',
     company_id: data.company_id,
     department_id: data.department_id,

@@ -147,10 +147,10 @@ export default function TasksWidget({ config, isEditMode, onToggle, onSizeChange
                     {activeTab === 'completed' ? (
                       <CheckCircle size={16} className="text-success" weight="fill" />
                     ) : (
-                      <div className={cn(
+                        <div className={cn(
                         "w-2 h-2 rounded-full",
-                        new Date(task.end_date) < new Date() ? "bg-error" : "bg-primary-500"
-                      )}></div>
+                        new Date(task.end_date).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) ? "bg-error" : "bg-primary-500"
+                        )}></div>
                     )}
                     <span className={cn(
                       activeTab === 'completed' ? "text-foreground-secondary line-through" : "text-foreground-primary"

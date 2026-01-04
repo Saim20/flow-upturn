@@ -63,7 +63,6 @@ export default function ProjectLayout({
     const { canWrite } = useAuth();
 
     const [activeTab, setActiveTab] = useState(initialActiveTab);
-    const [user, setUser] = useState<{ id: string; name: string; role: string }>();
     const [tabs, setTabs] = useState<TabItem[]>([]);
 
     // 🔹 Sync tab from URL
@@ -87,14 +86,9 @@ export default function ProjectLayout({
     useEffect(() => {
         async function fetchUserData() {
             try {
-                const retrievedUser = await getEmployeeInfo();
-                if (!retrievedUser) return;
-                setUser(retrievedUser);
-
-                // FunnelSimple tabs based on role AND permissions
+                // Filter tabs based on permissions
                 const hasWritePermission = canWrite(PERMISSION_MODULES.PROJECTS);
-                const visibleTabs =
-                    retrievedUser.role === "Admin" || hasWritePermission
+                const visibleTabs = hasWritePermission
                         ? TABS
                         : TABS.filter((tab) => tab.key !== "create" && tab.key !== "drafts");
 

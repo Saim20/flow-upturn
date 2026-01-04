@@ -20,7 +20,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     minSize: 'medium',
     maxSize: 'full',
-    requiresRole: ['employee', 'manager', 'admin'],
     component: AttendanceWidget as any,
   },
   notices: {
@@ -31,7 +30,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     minSize: 'medium',
     maxSize: 'large',
-    requiresRole: ['employee', 'manager', 'admin'],
     component: NoticesWidget as any,
   },
   tasks: {
@@ -42,7 +40,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     minSize: 'medium',
     maxSize: 'large',
-    requiresRole: ['employee', 'manager', 'admin'],
     component: TasksWidget as any,
   },
   projects: {
@@ -53,7 +50,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     minSize: 'medium',
     maxSize: 'large',
-    requiresRole: ['employee', 'manager', 'admin'],
     component: ProjectsWidget,
   },
   'stakeholder-issues': {
@@ -64,7 +60,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: 'medium',
     minSize: 'medium',
     maxSize: 'large',
-    requiresRole: ['employee', 'manager', 'admin'], // All can view, but only manager+ can create
     component: StakeholderIssuesWidget,
   },
   services: {
@@ -75,7 +70,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: 'large',
     minSize: 'medium',
     maxSize: 'large',
-    requiresRole: ['employee', 'manager', 'admin'],
     component: ServicesWidget,
   },
 };
@@ -92,14 +86,4 @@ export function getWidgetDefinition(type: string): WidgetDefinition | undefined 
  */
 export function getAllWidgetDefinitions(): WidgetDefinition[] {
   return Object.values(WIDGET_REGISTRY);
-}
-
-/**
- * Check if user has permission to use a widget
- */
-export function canUseWidget(widget: WidgetDefinition, userRoles: string[]): boolean {
-  if (!widget.requiresRole || widget.requiresRole.length === 0) {
-    return true;
-  }
-  return widget.requiresRole.some(role => userRoles.includes(role));
 }

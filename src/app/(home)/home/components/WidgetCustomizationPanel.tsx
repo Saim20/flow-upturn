@@ -18,7 +18,7 @@ interface WidgetCustomizationPanelProps {
 // Desktop size options (affects width and positioning)
 const desktopSizeOptions: { value: WidgetSize; label: string }[] = [
   { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
+  { value: 'medium', label: 'Normal' },
   { value: 'large', label: 'Large' },
   { value: 'full', label: 'Full Width' },
 ];

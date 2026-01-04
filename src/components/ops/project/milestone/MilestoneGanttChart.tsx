@@ -313,6 +313,10 @@ const MilestoneGanttChart: React.FC<MilestoneGanttChartProps> = ({
     let xPos = rect.left + rect.width / 2;
     xPos = Math.max(tooltipWidth / 2 + 10, xPos); // Don't go off left edge
     xPos = Math.min(viewportWidth - tooltipWidth / 2 - 10, xPos); // Don't go off right edge
+    // Stay to the left for the last milestone
+    xPos = milestones[milestones.length - 1].id === milestoneId
+      ? rect.right - tooltipWidth - 10
+      : xPos;
     
     setTooltipPosition({
       x: xPos,

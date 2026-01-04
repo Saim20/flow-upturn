@@ -38,7 +38,7 @@ export default function SampleProcessManager({ templateId, initialData }: Sample
     // New Step State
     const [newStepName, setNewStepName] = useState('');
     const [newStepDesc, setNewStepDesc] = useState('');
-    const [newStepRole, setNewStepRole] = useState('Admin');
+    const [newStepTeam, setNewStepTeam] = useState('Admin'); // Maps to default teams
     const [isAddingStep, setIsAddingStep] = useState<string | null>(null);
 
     const supabase = createClient();
@@ -152,7 +152,7 @@ export default function SampleProcessManager({ templateId, initialData }: Sample
                     name: newStepName.trim(),
                     description: newStepDesc.trim() || null,
                     step_order: nextOrder,
-                    assigned_team_role: newStepRole
+                    assigned_team_role: newStepTeam
                 })
                 .select()
                 .single();
@@ -168,7 +168,7 @@ export default function SampleProcessManager({ templateId, initialData }: Sample
 
             setNewStepName('');
             setNewStepDesc('');
-            setNewStepRole('Admin');
+            setNewStepTeam('Admin');
             router.refresh();
         } catch (error) {
             console.error('Error adding step:', error);
@@ -344,13 +344,13 @@ export default function SampleProcessManager({ templateId, initialData }: Sample
                                         />
                                         <div className="flex gap-2">
                                             <select
-                                                value={newStepRole}
-                                                onChange={(e) => setNewStepRole(e.target.value)}
+                                                value={newStepTeam}
+                                                onChange={(e) => setNewStepTeam(e.target.value)}
                                                 className="px-3 py-1.5 text-sm bg-background-primary border border-border-primary rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                             >
-                                                <option value="Admin">Admin</option>
-                                                <option value="Manager">Manager</option>
-                                                <option value="Employee">Employee</option>
+                                                <option value="Admin">Administrators Team</option>
+                                                <option value="Manager">Managers Team</option>
+                                                <option value="Employee">Employees Team</option>
                                             </select>
                                             <button
                                                 onClick={() => handleAddStep(process.id)}

@@ -104,7 +104,7 @@ function LeavePageContent() {
 export default function LeavePage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="flex flex-col items-center gap-3">
           <Calendar className="h-8 w-8 text-primary-600 animate-pulse" />
           <p className="text-sm text-foreground-secondary">Loading leave management...</p>

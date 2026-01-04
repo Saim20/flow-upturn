@@ -11,7 +11,6 @@ import { captureSupabaseError } from "@/lib/sentry";
 export type EmployeeInfo = {
   id: string;
   name: string;
-  role: string;
   has_approval: string;
   company_id?: string | number;
   supervisor_id?: string | null;

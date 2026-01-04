@@ -15,10 +15,10 @@ interface TaskUpdateModalProps {
 }
 
 const priorityOptions = [
-  { value: 'Low', label: 'Low' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'High', label: 'High' },
-  { value: 'Urgent', label: 'Urgent' }
+  { value: 'low', label: 'Low' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'high', label: 'High' },
+  { value: 'urgent', label: 'Urgent' }
 ];
 
 const statusOptions = [
@@ -166,7 +166,7 @@ export default function TaskUpdateModal({
         {formData.milestone_id && (
           <div className="bg-info/10 dark:bg-info/20 border border-info/30 dark:border-info/40 rounded-lg p-4">
             <p className="text-sm text-foreground-primary">
-              <strong>Note:</strong> This task is associated with milestone ID: {formData.milestone_id}
+              <strong>Note:</strong> This task is associated with milestone: <span className="font-semibold">{milestoneTitle || `ID ${formData.milestone_id}`}</span>
             </p>
           </div>
         )}

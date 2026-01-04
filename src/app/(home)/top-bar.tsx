@@ -252,7 +252,7 @@ export default function TopBar() {
               <div className="absolute right-0 mt-2 w-48 bg-surface-primary rounded-md shadow-lg py-1 z-1100 border border-border-primary">
                 <div className="px-4 py-2 border-b border-border-primary">
                   <p className="text-sm font-medium text-foreground-primary">{employeeInfo?.name || 'User'}</p>
-                  <p className="text-xs text-foreground-tertiary">{employeeInfo?.role || 'Role'}</p>
+                  <p className="text-xs text-foreground-tertiary">{employeeInfo?.designation || 'Employee'}</p>
                   {!isApproved && (
                     <p className="text-xs mt-1 text-warning">Pending approval</p>
                   )}

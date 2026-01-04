@@ -92,7 +92,6 @@ export default function ReportProblemModal({
         moduleCategory && `Category: ${moduleCategory}`,
         `Path: ${currentPath}`,
         `Company ID: ${employeeInfo?.company_id || "N/A"}`,
-        `User Role: ${employeeInfo?.role || "N/A"}`,
         `User Designation: ${employeeInfo?.designation || "N/A"}`,
       ].filter(Boolean).join("\n");
 
