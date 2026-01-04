@@ -24,7 +24,7 @@ export class DatabaseError extends Error {
  */
 export async function getCompanyId(): Promise<number> {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
+
   if (userError || !user) {
     console.error('[auth.ts] User not authenticated:', userError?.message);
     throw new DatabaseError('User not authenticated');
@@ -56,20 +56,20 @@ export async function getCompanyId(): Promise<number> {
  * Get the current employee information
  * Returns null if user has no employee record (e.g., during onboarding)
  */
-export async function getEmployeeInfo(): Promise<{ 
-  id: string; 
+export async function getEmployeeInfo(): Promise<{
+  id: string;
   name: string;
   role: string;
   has_approval: string;
-  company_id: number; 
-  department_id?: number; 
+  company_id: number;
+  department_id?: number;
   supervisor_id?: string;
   email?: string;
   phone_number?: string;
   designation?: string;
 } | null> {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
+
   if (userError || !user) {
     throw new DatabaseError('User not authenticated');
   }
@@ -89,8 +89,8 @@ export async function getEmployeeInfo(): Promise<{
     return null;
   }
 
-  return { 
-    id: data.id, 
+  return {
+    id: data.id,
     name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
     role: data.role || '',
     has_approval: data.has_approval || '',
@@ -108,7 +108,7 @@ export async function getEmployeeInfo(): Promise<{
  */
 export async function getUserId(): Promise<string> {
   const { data: { user }, error } = await supabase.auth.getUser();
-  
+
   if (error || !user) {
     throw new DatabaseError('User not authenticated');
   }
@@ -119,11 +119,11 @@ export async function getUserId(): Promise<string> {
 /**
  * Get the current company information
  */
-export async function getCompanyInfo(): Promise<{ 
-  id: number; 
-  name: string; 
-  code: string; 
-  industry_id: number; 
+export async function getCompanyInfo(): Promise<{
+  id: number;
+  name: string;
+  code: string;
+  industry_id: number;
   country_id: number;
   live_absent_enabled?: boolean;
   payroll_generation_day?: number;
@@ -131,11 +131,12 @@ export async function getCompanyInfo(): Promise<{
   live_payroll_enabled?: boolean;
   has_division?: boolean;
   max_device_limit?: number;
+  device_approval_enabled?: boolean;
 }> {
   const companyId = await getCompanyId();
-  
+
   console.log('[auth.ts] Getting company info for company ID:', companyId);
-  
+
   const { data, error } = await supabase
     .from('companies')
     .select('*')
@@ -162,9 +163,10 @@ export async function updateCompanySettings(settings: {
   industry_id?: number;
   country_id?: number;
   max_device_limit?: number;
+  device_approval_enabled?: boolean;
 }): Promise<void> {
   const companyId = await getCompanyId();
-  
+
   const { error } = await supabase
     .from('companies')
     .update(settings)
@@ -188,7 +190,7 @@ export async function getEmployeeId(): Promise<string> {
  */
 export async function getUser() {
   const { data: { user }, error } = await supabase.auth.getUser();
-  
+
   if (error || !user) {
     throw new DatabaseError('User not authenticated');
   }
@@ -197,7 +199,7 @@ export async function getUser() {
 }
 
 
-export async function getEmployeeName (id: string) {
+export async function getEmployeeName(id: string) {
   const employeeName = await supabase
     .from("employees")
     .select("first_name, last_name")

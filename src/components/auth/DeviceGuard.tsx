@@ -57,6 +57,35 @@ export default function DeviceGuard({ children }: { children: React.ReactNode })
         // Continue with normal device check if superadmin check fails
       }
 
+      // Check if device approval is enabled for this company
+      try {
+        const { data: employee } = await supabase
+          .from('employees')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (employee?.company_id) {
+          const { data: company } = await supabase
+            .from('companies')
+            .select('device_approval_enabled')
+            .eq('id', employee.company_id)
+            .single();
+
+          // Skip device checks if device approval is disabled
+          if (!company?.device_approval_enabled) {
+            console.log('[DeviceGuard] Device approval disabled for company - bypassing device check');
+            if (mounted) setDeviceStatus('approved');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('[DeviceGuard] Error checking company device approval setting:', err);
+        // Fail open - allow access if we can't determine the setting
+        if (mounted) setDeviceStatus('approved');
+        return;
+      }
+
       const deviceId = getDeviceId();
       if (!deviceId) {
         console.error('[DeviceGuard] No device ID');
@@ -90,10 +119,10 @@ export default function DeviceGuard({ children }: { children: React.ReactNode })
         }
 
         console.log('[DeviceGuard] Device status:', device.status);
-        
+
         if (mounted) {
           setDeviceStatus(device.status as 'approved' | 'pending' | 'rejected');
-          
+
           // Handle redirects based on status - but don't redirect if already on the target page
           if (device.status === 'pending' && pathname !== '/auth/device-approval') {
             window.location.href = '/auth/device-approval';

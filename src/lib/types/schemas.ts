@@ -376,6 +376,8 @@ export interface CompanyBasics {
   // Operations Settings
   live_absent_enabled: boolean;
   fiscal_year_start: string; // Date format: YYYY-MM-DD (e.g., "2024-01-01")
+  // Security Settings
+  device_approval_enabled?: boolean;
   max_device_limit?: number;
   max_users?: number;
 }

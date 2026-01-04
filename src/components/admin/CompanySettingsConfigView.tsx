@@ -11,6 +11,7 @@ interface CompanySettingsConfigViewProps {
   formValues: {
     live_absent_enabled: boolean;
     fiscal_year_start: string;
+    device_approval_enabled?: boolean;
     max_device_limit?: number;
     max_users?: number;
   };
@@ -20,6 +21,7 @@ interface CompanySettingsConfigViewProps {
     payroll_generation_day?: string;
     fiscal_year_start?: string;
     live_payroll_enabled?: string;
+    device_approval_enabled?: string;
     max_device_limit?: string;
   };
 }
@@ -36,7 +38,7 @@ export default function CompanySettingsConfigView({
   const handleToggleChange = (field: string) => async (checked: boolean) => {
     setSavingFields(prev => ({ ...prev, [field]: true }));
     setSavedFields(prev => ({ ...prev, [field]: false }));
-    
+
     try {
       await onChange(field, checked);
       setSavedFields(prev => ({ ...prev, [field]: true }));
@@ -60,7 +62,7 @@ export default function CompanySettingsConfigView({
 
     setSavingFields(prev => ({ ...prev, [field]: true }));
     setSavedFields(prev => ({ ...prev, [field]: false }));
-    
+
     try {
       await onChange(field, value);
       setSavedFields(prev => ({ ...prev, [field]: true }));
@@ -121,22 +123,41 @@ export default function CompanySettingsConfigView({
         />
 
         <div className="p-3 sm:p-6">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground-primary text-sm sm:text-base">Max Device Limit</span>
-            <SaveStatusIndicator field="max_device_limit" />
+          {/* Device Approval Toggle */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <ToggleField
+                label="Device Approval Required"
+                checked={formValues.device_approval_enabled ?? false}
+                onChange={handleToggleChange('device_approval_enabled')}
+                error={errors.device_approval_enabled}
+                description="Require admin approval for new devices before employees can sign in"
+              />
+            </div>
+            <SaveStatusIndicator field="device_approval_enabled" />
           </div>
-          <NumberField
-            name="max_device_limit"
-            label=""
-            value={formValues.max_device_limit || 3}
-            onChange={handleInputChange('max_device_limit')}
-            error={errors.max_device_limit}
-            min={1}
-            max={10}
-          />
-          <p className="text-sm text-foreground-secondary mt-1">
-            Maximum number of devices a user can be logged in from simultaneously
-          </p>
+
+          {/* Only show device limit settings when device approval is enabled */}
+          {formValues.device_approval_enabled && (
+            <div className="pt-4 border-t border-border-secondary">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground-primary text-sm sm:text-base">Max Device Limit</span>
+                <SaveStatusIndicator field="max_device_limit" />
+              </div>
+              <NumberField
+                name="max_device_limit"
+                label=""
+                value={formValues.max_device_limit || 3}
+                onChange={handleInputChange('max_device_limit')}
+                error={errors.max_device_limit}
+                min={1}
+                max={10}
+              />
+              <p className="text-sm text-foreground-secondary mt-1">
+                Maximum number of devices a user can be logged in from simultaneously
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 pt-6 border-t border-border-secondary">
             <div className="flex items-center gap-2 mb-2">

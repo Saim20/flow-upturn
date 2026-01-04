@@ -19,7 +19,7 @@ interface SetupStep1Props {
   onStepComplete: (isComplete: boolean) => void;
 }
 
-export default function SetupStep1({ 
+export default function SetupStep1({
   onStepComplete
 }: SetupStep1Props) {
   // Use context instead of props
@@ -43,6 +43,8 @@ export default function SetupStep1({
     // Operations Settings
     live_absent_enabled: false,
     fiscal_year_start: "2024-01-01",
+    // Security Settings
+    device_approval_enabled: false,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CompanyBasicsFormData, string>>>({});
   const [isValid, setIsValid] = useState(false);
@@ -77,6 +79,8 @@ export default function SetupStep1({
         // Operations Settings - add defaults if not present
         live_absent_enabled: companyInfo.live_absent_enabled ?? false,
         fiscal_year_start: companyInfo.fiscal_year_start ?? "2024-01-01",
+        // Security Settings
+        device_approval_enabled: companyInfo.device_approval_enabled ?? false,
       });
     }
   }, [companyInfo]);
@@ -96,11 +100,11 @@ export default function SetupStep1({
   // Check if step 1 is complete and notify parent
   useEffect(() => {
     // Step 1 is complete if company basics are valid and we have at least one of each core entity
-    const stepComplete = isValid && 
-                        departments.length > 0 && 
-                        divisions.length > 0 && 
-                        grades.length > 0 && 
-                        positions.length > 0;
+    const stepComplete = isValid &&
+      departments.length > 0 &&
+      divisions.length > 0 &&
+      grades.length > 0 &&
+      positions.length > 0;
     onStepComplete(stepComplete);
   }, [isValid, departments.length, divisions.length, grades.length, positions.length, onStepComplete]);
 
@@ -137,7 +141,7 @@ export default function SetupStep1({
           title="Company Information"
           icon={<Building className="w-5 h-5" />}
         />
-        
+
         <form onSubmit={onSubmit} className="p-3 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
@@ -197,6 +201,7 @@ export default function SetupStep1({
           formValues={{
             live_absent_enabled: formValues.live_absent_enabled,
             fiscal_year_start: formValues.fiscal_year_start,
+            device_approval_enabled: formValues.device_approval_enabled,
           }}
           onChange={handleSettingsChange}
           errors={{

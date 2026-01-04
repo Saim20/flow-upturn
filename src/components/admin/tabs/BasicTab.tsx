@@ -32,6 +32,8 @@ export default function BasicTab() {
     live_absent_enabled: false,
     // Payroll Settings
     fiscal_year_start: "2024-01-01",
+    // Security Settings
+    device_approval_enabled: false,
     max_device_limit: 3,
     max_users: 50,
   });
@@ -67,6 +69,8 @@ export default function BasicTab() {
         // Operations Settings - add defaults if not present
         live_absent_enabled: companyInfo.live_absent_enabled ?? false,
         fiscal_year_start: companyInfo.fiscal_year_start ?? "2024-01-01",
+        // Security Settings
+        device_approval_enabled: companyInfo.device_approval_enabled ?? false,
         max_device_limit: companyInfo.max_device_limit ?? 3,
         max_users: companyInfo.max_users ?? 50,
       });
@@ -155,6 +159,7 @@ export default function BasicTab() {
           formValues={{
             live_absent_enabled: formValues.live_absent_enabled,
             fiscal_year_start: formValues.fiscal_year_start,
+            device_approval_enabled: formValues.device_approval_enabled,
             max_device_limit: formValues.max_device_limit,
             max_users: formValues.max_users,
           }}
